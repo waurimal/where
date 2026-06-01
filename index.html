@@ -666,6 +666,930 @@
         if(data.pB) {
             document.getElementById('name-b').innerText = data.pB.name;
             document.getElementById('marker-name-b').innerText = data.pB.name;
+        }
+
+        const q = QUESTIONS[data.currentQ];
+        if(data.state === 'playing') {
+            document.getElementById('question-text').innerText = `Where is the ${q.target}?`;
+            document.getElementById('question-sub').innerText = q.sub;
+            document.getElementById('ui-q-num').innerText = `Q ${data.currentQ + 1} / 9`;
+            
+            document.querySelectorAll('.place').forEach(el => el.classList.remove('target'));
+            document.getElementById(`place-${q.target}`).classList.add('target');
+            
+            if(!window.isAnimating) {
+                // 내 출발점만 보이고 상대방 출발점은 숨김
+                if (myRole === 'A') {
+                    document.getElementById('marker-a').style.display = 'flex';
+                    document.getElementById('marker-b').style.display = 'none';
+                    renderMarker('a', data.pA.pos);
+                } else if (myRole === 'B') {
+                    document.getElementById('marker-b').style.display = 'flex';
+                    document.getElementById('marker-a').style.display = 'none';
+                    renderMarker('b', data.pB.pos);
+                }
+            }
+            updateMyButtons(data);
+
+            if(lastReadQuestionIndex !== data.currentQ && !window.isAnimating) {
+                lastReadQuestionIndex = data.currentQ;
+                setTimeout(() => { if(data.state === 'playing') speakQuestion(); }, 800); 
+            }
+        }
+
+        document.getElementById('ui-score-a').innerText = `P1: ${data.pA.score}/9`;
+        document.getElementById('ui-score-b').innerText = `P2: ${data.pB ? data.pB.score : 0}/9`;
+
+        renderCmdList('A', data.pA.cmds);
+        if(data.pB) renderCmdList('B', data.pB.cmds);
+
+        document.getElementById('btn-ready-a').classList.toggle('active', data.pA.ready);
+        document.getElementById('btn-ready-b').classList.toggle('active', data.pB ? data.pB.ready : false);
+    }
+
+    function updateMyButtons(data) {
+        const myData = data[`p${myRole}`];
+        if(!myData) return;
+
+        const isReady = myData.ready;
+        const isPlaying = data.state === 'playing'; 
+        const isDisabled = isReady || !isPlaying; 
+
+        const panel = document.getElementById(`panel-${myRole}`);
+        
+        panel.querySelectorAll('.btn-dir').forEach(b => b.disabled = isDisabled || localPending.dir);
+        panel.querySelectorAll('.btn-num').forEach(b => b.disabled = isDisabled || !localPending.dir || localPending.num);
+        panel.querySelectorAll('.btn-unit').forEach(b => b.disabled = isDisabled || !localPending.num);
+        
+        panel.querySelector(`#sel-prep-${myRole.toLowerCase()}`).disabled = isDisabled;
+        panel.querySelector(`#sel-place-${myRole.toLowerCase()}`).disabled = isDisabled;
+        panel.querySelector(`#btn-add-concl-${myRole.toLowerCase()}`).disabled = isDisabled || localPending.dir; 
+        
+        panel.querySelector('.clear-btn').disabled = isDisabled;
+        panel.querySelector('.ready-btn').innerText = isReady ? "WAITING..." : (isPlaying ? "READY GO!" : "대기 중...");
+        panel.querySelector('.ready-btn').disabled = isDisabled;
+    }
+
+    window.handleCmd = async (type, val) => {
+        if(localDataCache.state !== 'playing') {
+            showMsg("지금은 버튼을 누를 수 없습니다.");
+            return;
+        }
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+        const myKey = `p${myRole}`;
+        const myCmds = localDataCache[myKey].cmds;
+
+        let newCmd = null;
+
+        if(type === 'conclusion') {
+            const prep = document.getElementById(`sel-prep-${myRole.toLowerCase()}`).value;
+            const place = document.getElementById(`sel-place-${myRole.toLowerCase()}`).value;
+            newCmd = { str: `${prep} the ${place}.`, action: 'conclusion', dist: 0, prep: prep };
+            localPending = {}; 
+        }
+        else if(type === 'dir') {
+            if(val === 'Turn left' || val === 'Turn right') {
+                newCmd = { str: `${val}.`, action: val, dist: 0 };
+                localPending = {}; 
+            } else {
+                localPending.dir = val; 
+            }
+        }
+        else if(type === 'num') localPending.num = val;
+        else if(type === 'unit') {
+            newCmd = { str: `${localPending.dir} ${localPending.num} ${val}.`, action: localPending.dir, dist: localPending.num };
+            localPending = {}; 
+        }
+
+        if(newCmd) {
+            await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] }).catch(console.error);
+        }
+        updateMyButtons(localDataCache);
+    };
+
+    window.handleClear = async () => {
+        if(localDataCache.state !== 'playing') return;
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+        await updateDoc(roomRef, { [`p${myRole}.cmds`]: [] }).catch(console.error);
+        localPending = {};
+        updateMyButtons(localDataCache);
+    };
+
+    window.handleReady = async () => {
+        if(localDataCache.state !== 'playing') return;
+        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+        const myKey = `p${myRole}`;
+        const isReady = localDataCache[myKey].ready;
+        await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
+    };
+
+    window.isAnimating = false;
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+
+    async function runAnimations(data) {
+        window.isAnimating = true;
+        
+        // 애니메이션 시작 시 두 마커 모두 표시
+        document.getElementById('marker-a').style.display = 'flex';
+        if (data.pB) document.getElementById('marker-b').style.display = 'flex';
+        
+        showMsg("캐릭터가 이동합니다! 🏃‍♂️💨");
+        
+        let posA = {...data.pA.pos};
+        let posB = {...data.pB.pos};
+        
+        await Promise.all([
+            animatePath('a', posA, data.pA.cmds),
+            animatePath('b', posB, data.pB.cmds)
+        ]);
+
+        const targetId = QUESTIONS[data.currentQ].target;
+        const tObj = PLACES.find(p => p.id === targetId);
+        
+        let aWin = (posA.x === tObj.x && posA.y === tObj.y);
+        let bWin = (posB.x === tObj.x && posB.y === tObj.y);
+
+        let myWin = (myRole === 'A') ? aWin : bWin;
+        let oppWin = (myRole === 'A') ? bWin : aWin;
+
+        if (myWin) {
+            playSound('success');
+            if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, zIndex: 3000 });
+            if (oppWin) showMsg("두 명 모두 길 찾기에 성공했어요! 🎊");
+            else showMsg("목적지에 도착했습니다! ✨ 정답! ✨");
+        } else {
+            playSound('fail');
+            if (oppWin) showMsg("앗, 나는 실패했지만 상대방은 도착했어요! 😅");
+            else showMsg("목적지를 찾지 못했어요 😢");
+        }
+
+        await delay(3000); 
+
+        if(myRole === 'A') {
+            let aScore = data.pA.score + (aWin ? 1 : 0);
+            let bScore = data.pB.score + (bWin ? 1 : 0);
+            const nextQ = data.currentQ + 1;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            
+            if(nextQ >= 9) {
+                await updateDoc(roomRef, {
+                    state: 'finished',
+                    'pA.score': aScore, 'pB.score': bScore
+                }).catch(console.error);
+                finishGame(aScore, bScore, data.pA.name, data.pB.name);
+            } else {
+                await updateDoc(roomRef, {
+                    state: 'playing', currentQ: nextQ,
+                    'pA.score': aScore, 'pB.score': bScore,
+                    'pA.cmds': [], 'pB.cmds': [],
+                    'pA.ready': false, 'pB.ready': false,
+                    'pA.pos': {...QUESTIONS[nextQ].a_start},
+                    'pB.pos': {...QUESTIONS[nextQ].b_start}
+                }).catch(console.error);
+            }
+        }
+        window.isAnimating = false;
+        
+        // 애니메이션이 종료된 시점에 이미 다음 문제로 넘어갔다면 즉시 UI 갱신 (게스트 버그 해결)
+        if (localDataCache && localDataCache.state === 'playing') {
+            updateUI(localDataCache);
+        }
+    }
+
+    async function animatePath(markerId, pos, cmds) {
+        for(let cmd of cmds) {
+            if(cmd.action === 'conclusion') {
+                showMsg(`💬 ${cmd.str}`);
+                await delay(1000);
+                
+                if (cmd.prep === 'Turn left at') {
+                    pos.d = (pos.d + 3) % 4;
+                    renderMarker(markerId, pos);
+                    await delay(500);
+                } else if (cmd.prep === 'Turn right at') {
+                    pos.d = (pos.d + 1) % 4;
+                    renderMarker(markerId, pos);
+                    await delay(500);
+                }
+                continue;
+            }
+
+            if(cmd.action === 'Turn left') pos.d = (pos.d + 3) % 4;
+            else if(cmd.action === 'Turn right') pos.d = (pos.d + 1) % 4;
+            
+            renderMarker(markerId, pos);
+            if(cmd.action.includes('Turn')) await delay(500); 
+            
+            for(let i=0; i<cmd.dist; i++) {
+                let nx = pos.x + DIRS[pos.d][0];
+                let ny = pos.y + DIRS[pos.d][1];
+                if(nx >= 0 && nx < 4 && ny >= 0 && ny < 3) {
+                    pos.x = nx; pos.y = ny;
+                    renderMarker(markerId, pos);
+                    await delay(600);
+                } else {
+                    break; 
+                }
+            }
+        }
+    }
+
+    function renderMarker(id, pos) {
+        const el = document.getElementById(`marker-${id}`);
+        el.style.left = `${GRID_X[pos.x]}px`;
+        el.style.top = `${GRID_Y[pos.y]}px`;
+        el.querySelector('.dir-arrow').innerText = ARROWS[pos.d];
+    }
+
+    function renderCmdList(role, cmds) {
+        const list = document.getElementById(`cmd-list-${role.toLowerCase()}`);
+        if(!cmds || cmds.length === 0) list.innerHTML = `<div style="color:#aaa; text-align:center; margin-top:20px;">명령어를 만들어 길을 안내하세요!</div>`;
+        else {
+            list.innerHTML = cmds.map((c, idx) => {
+                let iconClass = 'arrow-up';
+                if(c.action.includes('left')) iconClass = 'arrow-rotate-left';
+                else if(c.action.includes('right')) iconClass = 'arrow-rotate-right';
+                else if(c.action === 'conclusion') iconClass = 'location-dot';
+
+                return `<div class="cmd-item">
+                    <i class="fa-solid fa-${iconClass}"></i> 
+                    ${c.str}
+                </div>`;
+            }).join('');
+        }
+        list.scrollTop = list.scrollHeight;
+    }
+
+    async function finishGame(scoreA, scoreB, nameA, nameB) {
+        document.getElementById('result-overlay').classList.remove('hidden');
+        if(roomUnsubscribe) roomUnsubscribe();
+        
+        let winMsg = scoreA > scoreB ? `${nameA} 승리! 🏆` : (scoreB > scoreA ? `${nameB} 승리! 🏆` : "아름다운 무승부! 🤝");
+        document.getElementById('result-msg').innerText = winMsg;
+        
+        if (typeof confetti === 'function') confetti({ particleCount: 400, spread: 150, origin: { y: 0.5 }, zIndex: 4000 });
+        playSound('success');
+
+        try {
+            const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
+            if(myRole === 'A') {
+                await addDoc(hofRef, { name: nameA, affiliation: localDataCache.pA.affiliation, score: scoreA, ts: Date.now() });
+                await addDoc(hofRef, { name: nameB, affiliation: localDataCache.pB.affiliation, score: scoreB, ts: Date.now() });
+            }
+            
+            setTimeout(async () => {
+                const snap = await getDocs(hofRef);
+                let records = [];
+                snap.forEach(doc => records.push(doc.data()));
+                records.sort((a,b) => b.score - a.score);
+                records = records.slice(0, 10);
+                
+                document.getElementById('leaderboard-body').innerHTML = records.map((r, i) => `
+                    <tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${i+1}위</td>
+                    <td>${r.affiliation}</td>
+                    <td><b>${r.name}</b></td><td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
+                `).join('');
+            }, 1000);
+
+        } catch (e) {
+            console.error("Hall of Fame Error:", e);
+            document.getElementById('leaderboard-body').innerHTML = `<tr><td colspan="4" style="color:red;">랭킹 로딩 실패</td></tr>`;
+        }
+    }
+</script>
+</body>
+</html>        .btn:hover { background: #2980b9; transform: scale(1.02); }
+        .btn.secondary { background: #9b59b6; }
+        .btn.secondary:hover { background: #8e44ad; }
+        .btn:disabled { background: #ccc !important; cursor: not-allowed; transform: none; }
+
+        /* 좌우 패널 - P1(Red), P2(Blue) 테마 적용 */
+        .side-panel { width: 310px; height: 100%; padding: 15px; display: flex; flex-direction: column; position: relative; z-index: 100; }
+        .panel-a { background-color: #ffe8e8; border-right: 3px solid #ffcdd2; }
+        .panel-b { background-color: #e3f2fd; border-left: 3px solid #bbdefb; }
+        
+        .panel-header { font-size: 24px; font-weight: 900; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+        .player-info { display: flex; align-items: center; gap: 10px; }
+        .panel-a .panel-header { color: #d32f2f; }
+        .panel-b .panel-header { color: #1976d2; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; background: white; border: 2px solid; }
+
+        .cmd-group { display: flex; gap: 5px; margin-bottom: 10px; }
+        .btn-cmd { flex: 1; padding: 8px 4px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; font-family: 'Nunito', sans-serif; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
+        .btn-cmd:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
+        .btn-cmd:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: translateY(4px); }
+        .btn-dir { background-color: #00bcd4; }
+        .btn-num { background-color: #ba68c8; }
+        .btn-unit { background-color: #ab47bc; }
+        
+        /* 어구 블록 추가 UI */
+        .conclusion-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; border: 2px dashed rgba(0,0,0,0.1); margin-bottom: 5px; }
+        .select-group { display: flex; gap: 5px; align-items: center; font-weight: bold; color: #555; }
+        .sel-custom { flex: 1; padding: 6px; border-radius: 6px; border: 2px solid #ddd; font-family: 'Nunito', sans-serif; font-weight: bold; outline: none; }
+        
+        .clear-btn { background: #7f8c8d; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 0 #34495e; }
+        .clear-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
+        .clear-btn:disabled { background: #ccc; box-shadow: none; transform: translateY(3px); }
+
+        .cmd-list { flex-grow: 1; background: white; border-radius: 10px; padding: 10px; overflow-y: auto; border: 2px dashed #ccc; font-size: 16px; font-weight: bold; color: #333; }
+        .cmd-item { padding: 8px 5px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px;}
+        .cmd-item i { color: #888; font-size: 14px; }
+        
+        .ready-btn { width: 100%; padding: 15px; font-size: 24px; font-weight: 900; color: white; border: none; border-radius: 15px; margin-top: 10px; cursor: pointer; transition: 0.2s; box-shadow: 0 5px 0 rgba(0,0,0,0.15); }
+        .panel-a .ready-btn { background-color: #ef9a9a; color: #d32f2f; box-shadow: 0 5px 0 #e57373; }
+        .panel-b .ready-btn { background-color: #90caf9; color: #1976d2; box-shadow: 0 5px 0 #64b5f6; }
+        .panel-a .ready-btn.active { background-color: #d32f2f; color: white; box-shadow: none; transform: translateY(5px); }
+        .panel-b .ready-btn.active { background-color: #1976d2; color: white; box-shadow: none; transform: translateY(5px); }
+        .ready-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* 중앙 패널 */
+        .center-panel { flex-grow: 1; display: flex; flex-direction: column; padding: 15px; gap: 10px; position: relative; background: #eceff1; }
+        
+        .top-info { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: white; padding: 8px 15px; border-radius: 10px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .room-code { color: #f1c40f; letter-spacing: 2px; font-size: 20px;}
+
+        .question-bar { background: white; border-radius: 15px; padding: 15px; text-align: center; border: 3px solid #bdc3c7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .question-bar h2 { margin: 0; font-size: 30px; color: #2c3e50; }
+        .question-bar p { margin: 5px 0 0 0; color: #7f8c8d; font-family: 'Jua', sans-serif; font-size: 20px; }
+        .tts-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: #f1c40f; color: white; border: none; font-size: 22px; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 0 #f39c12; }
+        .tts-btn:active { transform: translateY(calc(-50% + 4px)); box-shadow: none; }
+
+        /* 지도 및 도로 디자인 */
+        .map-container { flex-grow: 1; background-color: #81c784; border-radius: 15px; position: relative; overflow: hidden; border: 6px solid #558b2f; box-shadow: inset 0 0 30px rgba(0,0,0,0.3); }
+        
+        .city-block { position: absolute; background: #aed581; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); z-index: 0; }
+        .city-block::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.15); border-top: 1px dashed rgba(255,255,255,0.5); }
+
+        .road-h { position: absolute; width: 100%; height: 26px; background: #546e7a; z-index: 1; border-top: 2px solid #37474f; border-bottom: 2px solid #37474f; }
+        .road-v { position: absolute; height: 100%; width: 26px; background: #546e7a; z-index: 1; border-left: 2px solid #37474f; border-right: 2px solid #37474f; }
+        .road-center { position: absolute; width: 22px; height: 22px; background: #546e7a; z-index: 2; }
+        
+        .dash-h { position: absolute; width: 100%; height: 4px; background: repeating-linear-gradient(90deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
+        .dash-v { position: absolute; height: 100%; width: 4px; background: repeating-linear-gradient(0deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
+
+        /* 건물 디자인 */
+        .place { position: absolute; width: 52px; height: 46px; background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; border: 3px solid #2c3e50; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); transition: transform 0.3s, border-color 0.3s; }
+        .place.target { border-color: #e74c3c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 0 #c0392b, 0 0 25px #e74c3c; transform: translate(-50%, -55%) scale(1.15); z-index: 6;}
+        .place .emoji { font-size: 20px; margin-bottom: -2px; }
+        .place .name { font-size: 9px; font-weight: 900; background: rgba(255,255,255,0.95); padding: 1px 3px; border-radius: 3px; margin-top: -2px; color: #2c3e50; text-align: center; white-space: nowrap;}
+
+        /* 플레이어 마커 & 이름표 (Red & Blue) */
+        .marker { position: absolute; width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; z-index: 10; transition: left 0.4s linear, top 0.4s linear; transform: translate(-50%, -50%); border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
+        .marker-a { background-color: #d32f2f; }
+        .marker-b { background-color: #1976d2; display: none; }
+        .dir-arrow { position: absolute; color: white; font-size: 16px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        
+        .marker-name { position: absolute; top: 40px; background: rgba(255,255,255,0.95); font-size: 13px; font-weight: 900; padding: 2px 8px; border-radius: 6px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 2px solid; pointer-events: none;}
+        .marker-a .marker-name { border-color: #d32f2f; color: #d32f2f; }
+        .marker-b .marker-name { border-color: #1976d2; color: #1976d2; }
+
+        .bottom-bar { background: white; border-radius: 15px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border: 3px solid #bdc3c7; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .score-info { font-size: 22px; font-weight: 900; background: #f8f9fa; padding: 5px 15px; border-radius: 10px; border: 2px solid #eee;}
+        .score-a { color: #d32f2f; border-color: #ffcdd2; }
+        .score-b { color: #1976d2; border-color: #bbdefb; }
+        
+        #ingame-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(44, 62, 80, 0.9); color: white; padding: 20px 40px; border-radius: 15px; font-size: 28px; font-weight: bold; z-index: 100; text-align: center; display: none; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border: 3px solid #34495e; }
+
+        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        .leaderboard-table th, .leaderboard-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 18px; font-family: 'Jua', sans-serif;}
+        .leaderboard-table th { background: #e3f2fd; color: #1976d2; border-top: 3px solid #90caf9;}
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+
+    <!-- 1. 로비 오버레이 -->
+    <div id="lobby-overlay" class="overlay">
+        <div class="setup-box">
+            <h1>🗺️ Find the Place</h1>
+            <p style="font-size:18px; color:#666; margin-bottom: 20px;">친구와 떨어져서 즐기는 실시간 길 찾기 배틀!</p>
+            
+            <div id="lobby-state-0">
+                <div style="display:flex; gap:10px; margin-bottom:15px;">
+                    <select id="inp-grade" class="lobby-select" style="margin-bottom:0;">
+                        <option value="" disabled selected>학년</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option><option value="6">6</option>
+                    </select>
+                    <select id="inp-class" class="lobby-select" style="margin-bottom:0;">
+                        <option value="" disabled selected>반</option>
+                        <option value="1">1</option><option value="2">2</option>
+                        <option value="3">3</option><option value="4">4</option>
+                        <option value="5">5</option><option value="6">6</option>
+                        <option value="7">7</option><option value="8">8</option>
+                        <option value="9">9</option><option value="10">10</option>
+                        <option value="11">11</option><option value="12">12</option>
+                    </select>
+                    <input type="number" id="inp-num" placeholder="번호" min="1" max="50" style="margin-bottom:0;">
+                </div>
+                <input type="text" id="inp-name" placeholder="이름 입력" maxlength="8">
+                <button id="btn-next-step" class="btn">다음 단계로</button>
+            </div>
+            
+            <div id="lobby-state-1" class="hidden">
+                <p id="welcome-msg" style="font-size:24px; font-weight:bold; color:#3498db; margin-bottom:20px;"></p>
+                <button id="btn-create" class="btn">새 게임 방 만들기 (Host)</button>
+                <div style="margin: 15px 0; color: #bdc3c7; font-weight: bold;">OR</div>
+                <input type="text" id="inp-room" placeholder="참여 코드 4자리 입력" maxlength="4" style="font-size: 24px; letter-spacing: 5px; font-weight: bold;">
+                <button id="btn-join" class="btn secondary">방 참여하기 (Join)</button>
+            </div>
+            
+            <div id="lobby-state-2" class="hidden">
+                <h2>방 코드: <span id="display-room-code" style="color:#e74c3c; font-size:42px; letter-spacing: 3px;"></span></h2>
+                <p style="font-size: 18px;">상대방에게 이 코드를 알려주세요!</p>
+                <div style="margin: 30px; font-size: 22px; color: #3498db; font-weight: bold;">상대방을 기다리는 중... <i class="fa-solid fa-spinner fa-spin"></i></div>
+            </div>
+            <p id="sys-msg" style="color:#e74c3c; font-weight:bold; margin-top:15px; line-height: 1.4; font-size: 18px;"></p>
+        </div>
+    </div>
+
+    <!-- 2. 결과 오버레이 -->
+    <div id="result-overlay" class="overlay hidden">
+        <div class="setup-box" style="width: 650px;">
+            <h1 style="font-size: 56px; color:#e74c3c;">🏆 게임 종료!</h1>
+            <p id="result-msg" style="font-size:32px; color:#e74c3c; margin-bottom: 20px; font-weight: bold;"></p>
+            <table class="leaderboard-table">
+                <thead><tr><th>순위</th><th>소속</th><th>이름</th><th>점수</th></tr></thead>
+                <tbody id="leaderboard-body"><tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
+            </table>
+            <button onclick="location.reload()" class="btn secondary" style="margin-top:30px;">메인 화면으로 돌아가기</button>
+        </div>
+    </div>
+
+    <!-- 메인 게임 영역 -->
+    
+    <!-- Left Panel: P1 (Red) -->
+    <div class="side-panel panel-a" id="panel-A">
+        <div class="panel-header">
+            <div class="player-info"><div class="avatar" style="border-color:#d32f2f; color:#d32f2f;">👦</div><span id="name-a">Player 1</span></div>
+            <button class="clear-btn" id="btn-clear-a" onclick="handleClear()">Clear</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
+            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
+        </div>
+        
+        <!-- 어구 추가 블록 UI -->
+        <div class="conclusion-box">
+            <div class="select-group">
+                <select id="sel-prep-a" class="sel-custom">
+                    <option value="Turn left at">Turn left at</option>
+                    <option value="Turn right at">Turn right at</option>
+                    <option value="It's next to">It's next to</option>
+                    <option value="It's across from">It's across from</option>
+                </select>
+                <span>the</span>
+                <select id="sel-place-a" class="sel-custom"><!-- JS load --></select>
+            </div>
+            <button class="btn-cmd" id="btn-add-concl-a" style="background:#8bc34a; box-shadow:0 4px 0 #558b2f;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
+        </div>
+
+        <div class="cmd-list" id="cmd-list-a"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
+        <button class="ready-btn" id="btn-ready-a" onclick="handleReady()">READY</button>
+    </div>
+
+    <!-- Center Panel: Map -->
+    <div class="center-panel">
+        <div class="top-info">
+            <span>나의 역할: <span id="my-role-badge" style="color:#f1c40f;">-</span></span>
+            <span>Room: <span id="room-code-badge" class="room-code">----</span></span>
+        </div>
+        
+        <div class="question-bar">
+            <h2 id="question-text">Waiting...</h2>
+            <p id="question-sub">친구의 입장을 기다리고 있습니다.</p>
+            <button class="tts-btn" onclick="speakQuestion()"><i class="fa-solid fa-volume-high"></i></button>
+        </div>
+        
+        <div class="map-container" id="map">
+            <!-- Map content will be drawn by JS -->
+            <div class="marker marker-a" id="marker-a">
+                <div class="dir-arrow" id="dir-a"></div>
+                <div class="marker-name" id="marker-name-a"></div>
+            </div>
+            <div class="marker marker-b" id="marker-b">
+                <div class="dir-arrow" id="dir-b"></div>
+                <div class="marker-name" id="marker-name-b"></div>
+            </div>
+        </div>
+        
+        <div class="bottom-bar">
+            <span class="score-info score-a" id="ui-score-a">P1: 0/9</span>
+            <span id="ui-q-num" style="font-weight:900; color:#34495e; font-size:24px;">Q 1 / 9</span>
+            <span class="score-info score-b" id="ui-score-b">P2: 0/9</span>
+        </div>
+
+        <div id="ingame-msg">애니메이션 진행 중...</div>
+    </div>
+
+    <!-- Right Panel: P2 (Blue) -->
+    <div class="side-panel panel-b" id="panel-B">
+        <div class="panel-header">
+            <div class="player-info"><div class="avatar" style="border-color:#1976d2; color:#1976d2;">👧</div><span id="name-b">Player 2</span></div>
+            <button class="clear-btn" id="btn-clear-b" onclick="handleClear()">Clear</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
+            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
+            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
+        </div>
+        <div class="cmd-group">
+            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
+            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
+        </div>
+
+        <!-- 어구 추가 블록 UI -->
+        <div class="conclusion-box">
+            <div class="select-group">
+                <select id="sel-prep-b" class="sel-custom">
+                    <option value="Turn left at">Turn left at</option>
+                    <option value="Turn right at">Turn right at</option>
+                    <option value="It's next to">It's next to</option>
+                    <option value="It's across from">It's across from</option>
+                </select>
+                <span>the</span>
+                <select id="sel-place-b" class="sel-custom"><!-- JS load --></select>
+            </div>
+            <button class="btn-cmd" id="btn-add-concl-b" style="background:#8bc34a; box-shadow:0 4px 0 #558b2f;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
+        </div>
+
+        <div class="cmd-list" id="cmd-list-b"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
+        <button class="ready-btn" id="btn-ready-b" onclick="handleReady()">READY</button>
+    </div>
+
+</div>
+
+<script type="module">
+    function resizeApp() {
+        const app = document.querySelector('.app-container');
+        const scaleX = window.innerWidth / 1280;
+        const scaleY = window.innerHeight / 720;
+        const scale = Math.min(scaleX, scaleY) * 0.95; 
+        if (scale < 1) app.style.transform = `scale(${scale})`;
+        else app.style.transform = 'scale(1)';
+    }
+    window.addEventListener('resize', resizeApp);
+    resizeApp();
+
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    const audioCtx = AudioContextClass ? new AudioContextClass() : null;
+    if(audioCtx) {
+        document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
+    }
+
+    function playSound(type) {
+        if(!audioCtx) return;
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        if(type === 'success') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
+            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
+            osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); 
+            osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); 
+            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.6);
+        } else {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.4);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.4);
+        }
+    }
+
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+    const firebaseConfig = {
+        apiKey: "AIzaSyCAR_dSA_jViVY0RZAI3s41a39u9NufFj8",
+        authDomain: "where-2599e.firebaseapp.com",
+        projectId: "where-2599e",
+        storageBucket: "where-2599e.firebasestorage.app",
+        messagingSenderId: "1090101095033",
+        appId: "1:1090101095033:web:b80a7311d8dff569b842a8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'find-the-place-multi';
+    let currentUser = null;
+    let myRole = null; 
+    let myRoomId = null;
+    let roomUnsubscribe = null;
+    let myName = "";
+    let myAffiliation = "";
+    let lastReadQuestionIndex = -1; 
+    
+    let localPending = {}; 
+    let localDataCache = null;
+
+    // --- 4x3 Grid (3블록 구간) ---
+    const GRID_X = [80, 230, 380, 530]; 
+    const GRID_Y = [80, 210, 340];      
+    const DIRS = [[0,-1], [1,0], [0,1], [-1,0]]; 
+    const ARROWS = ['▲', '▶', '▼', '◀'];
+
+    const QUAD = {
+        1: {dx: 45, dy: -41}, 
+        2: {dx: -45, dy: -41},
+        3: {dx: -45, dy: 41}, 
+        4: {dx: 45, dy: 41}   
+    };
+
+    const PLACES = [
+        { id: 'Restaurant', name: 'Restaurant', icon: '🍔', x: 0, y: 0, q: 4 },
+        { id: 'Cafe', name: 'Cafe', icon: '☕', x: 1, y: 0, q: 3 },
+        { id: 'Bakery', name: 'Bakery', icon: '🥐', x: 0, y: 1, q: 1 },
+        { id: 'Market', name: 'Market', icon: '🛒', x: 1, y: 1, q: 2 },
+
+        { id: 'Bus stop', name: 'Bus stop', icon: '🚌', x: 1, y: 0, q: 4 },
+        { id: 'Police', name: 'Police', icon: '🚓', x: 2, y: 0, q: 3 },
+        { id: 'Post Office', name: 'Post Office', icon: '📮', x: 1, y: 1, q: 1 },
+        { id: 'Fire Station', name: 'Fire St.', icon: '🚒', x: 2, y: 1, q: 2 },
+
+        { id: 'Restroom', name: 'Restroom', icon: '🚻', x: 2, y: 0, q: 4 },
+        { id: 'Pet Shop', name: 'Pet Shop', icon: '🐶', x: 3, y: 0, q: 3 },
+        { id: 'Toy Store', name: 'Toy Store', icon: '🧸', x: 2, y: 1, q: 1 },
+        { id: 'Book Store', name: 'Book Store', icon: '📖', x: 3, y: 1, q: 2 },
+
+        { id: 'Park', name: 'Park', icon: '🌳', x: 0, y: 1, q: 4 },
+        { id: 'Gym', name: 'Gym', icon: '🏋️', x: 1, y: 1, q: 3 },
+        { id: 'Cinema', name: 'Cinema', icon: '🍿', x: 0, y: 2, q: 1 },
+        { id: 'Museum', name: 'Museum', icon: '🏛️', x: 1, y: 2, q: 2 },
+
+        { id: 'Hospital', name: 'Hospital', icon: '🏥', x: 1, y: 1, q: 4 },
+        { id: 'Pharmacy', name: 'Pharmacy', icon: '💊', x: 2, y: 1, q: 3 },
+        { id: 'House', name: 'House', icon: '🏠', x: 1, y: 2, q: 1 },
+        { id: 'Hotel', name: 'Hotel', icon: '🏨', x: 2, y: 2, q: 2 },
+
+        { id: 'Bank', name: 'Bank', icon: '🏦', x: 2, y: 1, q: 4 },
+        { id: 'Library', name: 'Library', icon: '📚', x: 3, y: 1, q: 3 },
+        { id: 'Clothing', name: 'Clothing', icon: '👗', x: 2, y: 2, q: 1 },
+        { id: 'School', name: 'School', icon: '🏫', x: 3, y: 2, q: 2 }
+    ];
+
+    const QUESTIONS = [
+        { target: 'School', sub: 'School(학교)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:2} },
+        { target: 'Bank', sub: 'Bank(은행)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:3, y:2, d:3} },
+        { target: 'Park', sub: 'Park(공원)은 어디에 있나요?', a_start: {x:1, y:2, d:0}, b_start: {x:2, y:0, d:2} },
+        { target: 'Library', sub: 'Library(도서관)는 어디에 있나요?', a_start: {x:2, y:2, d:0}, b_start: {x:1, y:0, d:1} },
+        { target: 'Hospital', sub: 'Hospital(병원)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:3} },
+        { target: 'Restaurant', sub: 'Restaurant(식당)은 어디에 있나요?', a_start: {x:2, y:1, d:3}, b_start: {x:1, y:2, d:0} },
+        { target: 'House', sub: 'House(집)는 어디에 있나요?', a_start: {x:0, y:1, d:1}, b_start: {x:3, y:2, d:3} },
+        { target: 'Restroom', sub: 'Restroom(화장실)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:2, y:2, d:0} },
+        { target: 'Bus stop', sub: 'Bus stop(버스 정류장)은 어디에 있나요?', a_start: {x:0, y:2, d:0}, b_start: {x:3, y:0, d:2} }
+    ];
+
+    function sysMsg(msg) { document.getElementById('sys-msg').innerText = msg; }
+    function showMsg(msg) { 
+        const el = document.getElementById('ingame-msg');
+        el.innerHTML = msg; el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 3500);
+    }
+
+    function drawMap() {
+        const map = document.getElementById('map');
+        const markerA = document.getElementById('marker-a');
+        const markerB = document.getElementById('marker-b');
+        
+        let html = '';
+        
+        for (let i = 0; i < GRID_X.length - 1; i++) {
+            for (let j = 0; j < GRID_Y.length - 1; j++) {
+                const bx = GRID_X[i] + 13 + 5; 
+                const by = GRID_Y[j] + 13 + 5;
+                const bw = (GRID_X[i+1] - 13 - 5) - bx;
+                const bh = (GRID_Y[j+1] - 13 - 5) - by;
+                html += `<div class="city-block" style="left:${bx}px; top:${by}px; width:${bw}px; height:${bh}px;"></div>`;
+            }
+        }
+
+        GRID_Y.forEach(y => {
+            html += `<div class="road-h" style="top:${y-13}px;"></div><div class="dash-h" style="top:${y-2}px;"></div>`;
+        });
+        GRID_X.forEach(x => {
+            html += `<div class="road-v" style="left:${x-13}px;"></div><div class="dash-v" style="left:${x-2}px;"></div>`;
+        });
+        
+        GRID_Y.forEach(y => {
+            GRID_X.forEach(x => {
+                html += `<div class="road-center" style="left:${x-11}px; top:${y-11}px;"></div>`;
+            });
+        });
+        
+        PLACES.forEach(p => {
+            const px = GRID_X[p.x] + QUAD[p.q].dx;
+            const py = GRID_Y[p.y] + QUAD[p.q].dy;
+            html += `<div class="place" id="place-${p.id}" style="left:${px}px; top:${py}px;"><div class="emoji">${p.icon}</div><div class="name">${p.name}</div></div>`;
+        });
+        
+        map.innerHTML = html;
+        map.appendChild(markerA);
+        map.appendChild(markerB);
+
+        const sortedPlaces = [...PLACES].sort((a,b) => a.name.localeCompare(b.name));
+        const options = sortedPlaces.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+        document.getElementById('sel-place-a').innerHTML = options;
+        document.getElementById('sel-place-b').innerHTML = options;
+    }
+    
+    drawMap();
+    
+    const initAuth = async () => {
+        try {
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
+            } else {
+                await signInAnonymously(auth);
+            }
+        } catch (e) {
+            console.error("Auth Error:", e);
+            sysMsg("서버 인증 실패! Firebase 설정을 확인하세요.");
+        }
+    };
+    initAuth();
+
+    onAuthStateChanged(auth, user => {
+        if(user) {
+            currentUser = user;
+            if(document.getElementById('sys-msg').innerText.includes("연결 중")) sysMsg("");
+        }
+    });
+
+    document.getElementById('btn-next-step').onclick = () => {
+        const g = document.getElementById('inp-grade').value;
+        const c = document.getElementById('inp-class').value;
+        const n = document.getElementById('inp-num').value.trim();
+        const name = document.getElementById('inp-name').value.trim();
+
+        if(!g || !c || !n || !name) return sysMsg("학년, 반, 번호, 이름을 모두 입력해주세요!");
+
+        myName = name;
+        myAffiliation = `${g}학년 ${c}반 ${n}번`;
+        
+        document.getElementById('welcome-msg').innerText = `환영합니다, ${myName}님!`;
+        document.getElementById('lobby-state-0').classList.add('hidden');
+        document.getElementById('lobby-state-1').classList.remove('hidden');
+        sysMsg(""); 
+    };
+
+    const fetchWithTimeout = (promise, ms) => {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("시간 초과")), ms));
+        return Promise.race([promise, timeout]);
+    };
+
+    document.getElementById('btn-create').onclick = async () => {
+        if(!currentUser) return sysMsg("서버 연결 대기 중입니다...");
+        try {
+            document.getElementById('btn-create').disabled = true;
+            sysMsg("방을 생성하는 중입니다...");
+
+            myRole = 'A';
+            myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            
+            await fetchWithTimeout(setDoc(roomRef, {
+                state: 'waiting',
+                currentQ: 0,
+                pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start} },
+                pB: null
+            }), 8000);
+
+            document.getElementById('lobby-state-1').classList.add('hidden');
+            document.getElementById('lobby-state-2').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = myRoomId;
+            
+            listenRoom(roomRef);
+            sysMsg("");
+        } catch (e) {
+            sysMsg(`⚠️ 방 생성 실패. Firestore 데이터베이스 설정을 확인하세요.`);
+        } finally {
+            document.getElementById('btn-create').disabled = false;
+        }
+    };
+
+    document.getElementById('btn-join').onclick = async () => {
+        if(!currentUser) return sysMsg("서버 연결 대기 중입니다...");
+        const code = document.getElementById('inp-room').value.trim();
+        if(!code) return sysMsg("참여 코드를 입력하세요!");
+
+        try {
+            document.getElementById('btn-join').disabled = true;
+            sysMsg("방에 접속하는 중입니다...");
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+            const docSnap = await fetchWithTimeout(getDoc(roomRef), 8000);
+            
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                if(data.pB !== null) {
+                    document.getElementById('btn-join').disabled = false;
+                    return sysMsg("이미 게임이 진행중인 꽉 찬 방입니다.");
+                }
+                
+                myRole = 'B';
+                myRoomId = code;
+                await updateDoc(roomRef, {
+                    pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start} },
+                    state: 'playing'
+                });
+                sysMsg("");
+                listenRoom(roomRef);
+            } else {
+                sysMsg("입력하신 방 코드를 찾을 수 없습니다.");
+            }
+        } catch (e) {
+            sysMsg(`⚠️ 접속 실패. 호스트 환경이 정상인지 확인해주세요.`);
+        } finally {
+            document.getElementById('btn-join').disabled = false;
+        }
+    };
+
+    function listenRoom(roomRef) {
+        document.getElementById('lobby-overlay').classList.add('hidden');
+        document.getElementById('my-role-badge').innerText = myRole === 'A' ? "P1 (Red)" : "P2 (Blue)";
+        document.getElementById('room-code-badge').innerText = myRoomId;
+        
+        const oppRole = myRole === 'A' ? 'B' : 'A';
+        const oppPanel = document.getElementById(`panel-${oppRole}`);
+        oppPanel.style.opacity = '0.5';
+        oppPanel.style.pointerEvents = 'none';
+
+        roomUnsubscribe = onSnapshot(roomRef, (snapshot) => {
+            if(!snapshot.exists()) return;
+            const data = snapshot.data();
+            localDataCache = data;
+            
+            if (data.state !== 'waiting') {
+                document.getElementById('lobby-overlay').classList.add('hidden');
+            } else if(myRole === 'A') {
+                document.getElementById('lobby-overlay').classList.remove('hidden');
+                document.getElementById('lobby-state-0').classList.add('hidden');
+                document.getElementById('lobby-state-1').classList.add('hidden');
+                document.getElementById('lobby-state-2').classList.remove('hidden');
+            }
+
+            updateUI(data);
+
+            if(data.state === 'animating' && !window.isAnimating) {
+                runAnimations(data);
+            }
+            if(data.state === 'playing' && data.pA.ready && data.pB && data.pB.ready) {
+                if(myRole === 'A') updateDoc(roomRef, { state: 'animating' }).catch(console.error);
+            }
+        }, (error) => {
+            console.error("Snapshot error:", error);
+            sysMsg("서버와의 연결이 끊어졌습니다.");
+        });
+    }
+
+    window.speakQuestion = () => {
+        if (!window.speechSynthesis) return;
+        const text = document.getElementById('question-text').innerText;
+        if(speechSynthesis.speaking) speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US'; 
+        u.rate = 0.9; 
+        speechSynthesis.speak(u);
+    };
+
+    function updateUI(data) {
+        document.getElementById('name-a').innerText = data.pA.name;
+        document.getElementById('marker-name-a').innerText = data.pA.name;
+        
+        if(data.pB) {
+            document.getElementById('name-b').innerText = data.pB.name;
+            document.getElementById('marker-name-b').innerText = data.pB.name;
             document.getElementById('marker-b').style.display = 'flex';
         }
 
