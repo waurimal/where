@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Find the Place - 1:1 Battle</title>
+<style>
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; text-align: center; background: #e2e8f0; margin: 0; padding: 20px; }
+  .box { max-width: 800px; margin: 0 auto; background: white; padding: 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+  .input-group { margin-bottom: 20px; }
+  input { padding: 12px; margin: 5px; width: 90px; text-align: center; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+  .btn { padding: 12px 30px; background: #3b82f6; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 18px; font-weight: bold; transition: 0.2s; }
+  .btn:hover { background: #2563eb; }
+  .map-row { display: flex; justify-content: center; gap: 30px; margin-bottom: 30px; }
+  .building { width: 140px; height: 110px; background: #f8fafc; border: 3px solid #cbd5e1; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+  .building:hover { border-color: #3b82f6; transform: translateY(-5px); }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { border: 1px solid #e2e8f0; padding: 15px; font-size: 18px; }
+  th { background: #3b82f6; color: white; }
+</style>
+</head>
+<body>
+
+<!-- 1. 로그인 섹션 -->
+<div id="login-sec" class="box">
+  <h1>🗺️ Find the Place 로그인</h1>
+  <p style="color:#64748b; font-size:18px;">학급 정보와 이름을 입력하고 대결을 시작하세요!</p>
+  <div class="input-group">
+    <input type="number" id="grade" placeholder="학년">
+    <input type="number" id="classNum" placeholder="반">
+    <input type="number" id="studentNum" placeholder="번호">
+    <input type="text" id="playerName" placeholder="이름" style="width: 140px;">
+  </div>
+  <button class="btn" id="start-btn">게임 입장</button>
+</div>
+
+<!-- 2. 게임 섹션 -->
+<div id="game-sec" class="box" style="display:none;">
+  <h2>🗺️ 1:1 스피드 대결</h2>
+  <div style="display:flex; justify-content:space-around; margin: 20px 0;">
+    <h3 id="p1-score-txt" style="color:#ef4444;">P1 (A키): 0점</h3>
+    <h3 id="p2-score-txt" style="color:#3b82f6;">P2 (L키): 0점</h3>
+  </div>
+  <div id="msg" style="background:#fef3c7; padding:20px; border-radius:12px; font-size:24px; font-weight:bold; color:#d97706; margin-bottom:30px;">문제를 기다려주세요...</div>
+  
+  <div id="map">
+    <div class="map-row">
+      <div class="building" data-ans="School">🏫 School</div>
+      <div class="building" data-ans="Hospital">🏥 Hospital</div>
+    </div>
+    <div class="map-row">
+      <div class="building" data-ans="Bank">🏦 Bank</div>
+      <div class="building" data-ans="Park">🌳 Park</div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. 명예의 전당 섹션 -->
+<div id="leaderboard-sec" class="box" style="display:none;">
+  <h1>🏆 명예의 전당</h1>
+  <table>
+    <thead><tr><th>순위</th><th>소속</th><th>이름</th><th>점수</th></tr></thead>
+    <tbody id="lb-body"></tbody>
+  </table>
+  <br>
+  <button class="btn" onclick="location.reload()">새 게임 시작</button>
+</div>
+
+<!-- 4. Firebase 및 게임 로직 스크립트 -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+  // ★ 여기에 본인의 Firebase 콘솔 설정값을 붙여넣으세요 ★
+  const firebaseConfig = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+  };
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
+
+  let p1Score = 0, p2Score = 0, state = 'wait', activeP = 0, qIdx = 0;
+  const questions = [
+    {q: "Go straight 1 block. It's on your left.", a: "Park"},
+    {q: "It's next to the Hospital.", a: "School"},
+    {q: "It's across from the Park.", a: "Bank"},
+    {q: "Go straight 2 blocks. It's on your right.", a: "Hospital"}
+  ];
+  let userInfo = {};
+
+  // 로그인 및 게임 시작
+  document.getElementById('start-btn').onclick = () => {
+    userInfo = {
+      g: document.getElementById('grade').value,
+      c: document.getElementById('classNum').value,
+      n: document.getElementById('studentNum').value,
+      name: document.getElementById('playerName').value
+    };
+    if(!userInfo.name || !userInfo.g) return alert("학년과 이름을 정확히 입력하세요!");
+    
+    document.getElementById('login-sec').style.display = 'none';
+    document.getElementById('game-sec').style.display = 'block';
+    nextQ();
+  };
+
+  // 다음 문제 출제
+  function nextQ() {
+    if(qIdx >= questions.length) return endGame();
+    state = 'play'; activeP = 0;
+    document.getElementById('msg').innerHTML = "Q: " + questions[qIdx].q + "<br><small style='font-size:16px; color:#6b7280;'>(먼저 버저 A 또는 L 키를 누르세요)</small>";
+  }
+
+  // 버저 입력 (A키, L키)
+  window.onkeydown = (e) => {
+    if(state !== 'play') return;
+    if(e.key.toLowerCase() === 'a' || e.key === 'ㅁ') { 
+        activeP = 1; state = 'buzzed'; 
+        document.getElementById('msg').innerHTML = "<span style='color:#ef4444;'>P1(빨강)</span> 정답 건물을 클릭하세요!"; 
+    }
+    if(e.key.toLowerCase() === 'l' || e.key === 'ㅣ') { 
+        activeP = 2; state = 'buzzed'; 
+        document.getElementById('msg').innerHTML = "<span style='color:#3b82f6;'>P2(파랑)</span> 정답 건물을 클릭하세요!"; 
+    }
+  };
+
+  // 정답 확인
+  document.querySelectorAll('.building').forEach(b => {
+    b.onclick = () => {
+      if(state !== 'buzzed') return;
+      if(b.dataset.ans === questions[qIdx].a) {
+        activeP === 1 ? p1Score++ : p2Score++;
+        document.getElementById('msg').innerHTML = "🎉 <span style='color:#22c55e;'>정답입니다! +1점</span>";
+      } else {
+        activeP === 1 ? p1Score-- : p2Score--;
+        document.getElementById('msg').innerHTML = "❌ <span style='color:#ef4444;'>틀렸습니다! -1점</span>";
+      }
+      document.getElementById('p1-score-txt').innerText = `P1: ${p1Score}점`;
+      document.getElementById('p2-score-txt').innerText = `P2: ${p2Score}점`;
+      state = 'wait'; qIdx++; setTimeout(nextQ, 1500);
+    }
+  });
+
+  // 게임 종료 및 Firestore 저장 로직
+  async function endGame() {
+    document.getElementById('game-sec').style.display = 'none';
+    document.getElementById('msg').innerText = "결과를 서버에 저장하는 중...";
+    
+    // 둘 중 더 높은 점수를 최종 기록으로 반영
+    const finalScore = Math.max(p1Score, p2Score); 
+    
+    try {
+      // Firestore의 'hallOfFame' 컬렉션에 데이터 추가
+      await addDoc(collection(db, "hallOfFame"), {
+        affiliation: `${userInfo.g}학년 ${userInfo.c}반 ${userInfo.n}번`,
+        name: userInfo.name,
+        score: finalScore,
+        timestamp: new Date()
+      });
+      showLeaderboard();
+    } catch(e) { 
+      console.error("Error", e); 
+      alert("DB 저장 실패. Firebase 콘솔 설정을 확인하세요."); 
+      showLeaderboard(); 
+    }
+  }
+
+  // 명예의 전당 (Top 5) 불러오기 로직
+  async function showLeaderboard() {
+    document.getElementById('leaderboard-sec').style.display = 'block';
+    
+    // 점수(score) 내림차순 정렬 후 상위 5개 가져오기
+    const q = query(collection(db, "hallOfFame"), orderBy("score", "desc"), limit(5));
+    const snap = await getDocs(q);
+    
+    let html = ""; let rank = 1;
+    snap.forEach(doc => {
+      const d = doc.data();
+      html += `<tr><td>${rank++}위</td><td>${d.affiliation}</td><td>${d.name}</td><td>${d.score}점</td></tr>`;
+    });
+    document.getElementById('lb-body').innerHTML = html;
+  }
+</script>
+</body>
+</html>
