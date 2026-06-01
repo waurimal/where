@@ -1186,7 +1186,18 @@
         document.getElementById('result-overlay').classList.remove('hidden');
         if(roomUnsubscribe) roomUnsubscribe();
         
-        let winMsg = scoreA > scoreB ? `${nameA} 승리! 🏆` : (scoreB > scoreA ? `${nameB} 승리! 🏆` : "아름다운 무승부! 🤝");
+        // 내 승패 여부 계산
+        let isTie = scoreA === scoreB;
+        let myWin = (myRole === 'A' && scoreA > scoreB) || (myRole === 'B' && scoreB > scoreA);
+        
+        let winMsg = "";
+        if(isTie) {
+            winMsg = "아름다운 무승부! 🤝";
+        } else if(myWin) {
+            winMsg = `${myRole === 'A' ? nameA : nameB} 승리! 🏆`;
+        } else {
+            winMsg = "아쉽게 패배했습니다. 더 노력해 주세요. 😢";
+        }
         document.getElementById('result-msg').innerText = winMsg;
         
         // 라운드별 기록 렌더링
@@ -1201,8 +1212,13 @@
             `).join('');
         }
         
-        if (typeof confetti === 'function') confetti({ particleCount: 400, spread: 150, origin: { y: 0.5 }, zIndex: 4000 });
-        playSound('success');
+        // 승리나 무승부일 때만 폭죽 및 축하음
+        if (myWin || isTie) {
+            if (typeof confetti === 'function') confetti({ particleCount: 400, spread: 150, origin: { y: 0.5 }, zIndex: 4000 });
+            playSound('success');
+        } else {
+            playSound('fail'); // 패배 시 효과음
+        }
 
         try {
             const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
