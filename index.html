@@ -137,7 +137,8 @@
                 <div style="margin: 20px; font-size: 20px; color: #00bcd4;">친구를 기다리는 중... <i class="fa-solid fa-spinner fa-spin"></i></div>
             </div>
 
-            <p id="sys-msg" style="color:red; font-weight:bold; margin-top:15px;"></p>
+            <!-- 메시지 출력을 위한 공간 -->
+            <p id="sys-msg" style="color:red; font-weight:bold; margin-top:15px; line-height: 1.4;"></p>
         </div>
     </div>
 
@@ -306,19 +307,16 @@
     // 1. 초기화 및 Auth
     drawMap();
     
-    // Firebase 안정성 향상을 위한 엄격한 인증 처리
     const initAuth = async () => {
         try {
-            sysMsg("서버에 연결 중입니다...");
             if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                 await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
             } else {
                 await signInAnonymously(auth);
             }
-            sysMsg(""); // 인증 성공 시 메시지 지움
         } catch (e) {
             console.error("Auth Error:", e);
-            sysMsg("인증 실패! Firebase 익명 로그인이 켜져 있는지 확인하세요.");
+            sysMsg("서버 인증 실패! Firebase 익명 로그인이 활성화되어 있는지 확인하세요.");
         }
     };
     initAuth();
@@ -348,24 +346,32 @@
         sysMsg(""); // 에러 메시지 초기화
     };
 
-    // 2. 방 만들기 (Host) - 에러 핸들링 추가
+    // 타임아웃 헬퍼 함수
+    const fetchWithTimeout = (promise, ms) => {
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("시간 초과")), ms));
+        return Promise.race([promise, timeout]);
+    };
+
+    // 2. 방 만들기 (Host)
     document.getElementById('btn-create').onclick = async () => {
         if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
         
         try {
             document.getElementById('btn-create').disabled = true;
-            sysMsg("방을 생성하는 중입니다...");
+            sysMsg("방을 생성하는 중입니다...\n(만약 계속 멈춰있다면 Firebase 콘솔에서 Firestore를 생성했는지 확인하세요!)");
 
             myRole = 'A';
             myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
             
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-            await setDoc(roomRef, {
-                state: 'waiting', // waiting, playing, animating, finished
+            
+            // 8초 이상 걸리면 에러로 간주 (Firestore 미생성 방지)
+            await fetchWithTimeout(setDoc(roomRef, {
+                state: 'waiting',
                 currentQ: 0,
                 pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start} },
-                pB: null // Guest가 들어올 자리
-            });
+                pB: null
+            }), 8000);
 
             document.getElementById('lobby-state-1').classList.add('hidden');
             document.getElementById('lobby-state-2').classList.remove('hidden');
@@ -375,13 +381,13 @@
             sysMsg("");
         } catch (e) {
             console.error("Create Room Error:", e);
-            sysMsg(`방 생성 실패: 권한 부족 또는 연결 오류 (${e.message})`);
+            sysMsg(`⚠️ 방 생성 실패\n원인: Firebase 설정 오류 또는 Firestore 미생성\n해결: Firebase 접속 -> 빌드 -> Firestore Database -> 데이터베이스 만들기(테스트 모드) 진행`);
         } finally {
             document.getElementById('btn-create').disabled = false;
         }
     };
 
-    // 3. 방 참여 (Guest) - 에러 핸들링 추가
+    // 3. 방 참여 (Guest)
     document.getElementById('btn-join').onclick = async () => {
         if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
         const code = document.getElementById('inp-room').value.trim();
@@ -389,10 +395,12 @@
 
         try {
             document.getElementById('btn-join').disabled = true;
-            sysMsg("방에 접속하는 중입니다...");
+            sysMsg("방에 접속하는 중입니다...\n(만약 계속 멈춰있다면 Firebase 설정을 확인하세요!)");
 
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-            const docSnap = await getDoc(roomRef);
+            
+            // 데이터 가져오기 (8초 타임아웃)
+            const docSnap = await fetchWithTimeout(getDoc(roomRef), 8000);
             
             if(docSnap.exists()) {
                 const data = docSnap.data();
@@ -405,16 +413,16 @@
                 myRoomId = code;
                 await updateDoc(roomRef, {
                     pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start} },
-                    state: 'playing' // P2가 들어오면 바로 게임 시작
+                    state: 'playing'
                 });
                 sysMsg("");
                 listenRoom(roomRef);
             } else {
-                sysMsg("방 코드를 찾을 수 없습니다.");
+                sysMsg("입력하신 방 코드를 찾을 수 없습니다.");
             }
         } catch (e) {
             console.error("Join Room Error:", e);
-            sysMsg(`접속 실패: 권한 부족 또는 연결 오류 (${e.message})`);
+            sysMsg(`⚠️ 접속 실패\n원인: Firebase 설정 오류 또는 Firestore 미생성\n해결: 호스트의 Firebase 환경이 정상인지 확인해주세요.`);
         } finally {
             document.getElementById('btn-join').disabled = false;
         }
@@ -440,29 +448,28 @@
             
             updateUI(data);
 
-            // 상태 감지 로직
             if(data.state === 'animating' && !window.isAnimating) {
                 runAnimations(data);
             }
             if(data.state === 'playing' && data.pA.ready && data.pB && data.pB.ready) {
-                // 둘 다 ready면 Host(A)가 상태를 animating으로 변경
                 if(myRole === 'A') {
                     updateDoc(roomRef, { state: 'animating' }).catch(console.error);
                 }
             }
+        }, (error) => {
+            console.error("Snapshot error:", error);
+            sysMsg("서버와의 실시간 데이터 통신이 끊어졌습니다.");
         });
     }
 
     // 5. UI 업데이트
     function updateUI(data) {
-        // 이름 세팅
         document.getElementById('name-a').innerText = data.pA.name;
         if(data.pB) {
             document.getElementById('name-b').innerText = data.pB.name;
             document.getElementById('marker-b').style.display = 'flex';
         }
 
-        // 문제 및 점수 세팅
         const q = QUESTIONS[data.currentQ];
         if(data.state === 'playing') {
             document.getElementById('question-text').innerText = `Where is the ${q.target}?`;
@@ -472,24 +479,19 @@
             document.querySelectorAll('.place').forEach(el => el.classList.remove('target'));
             document.getElementById(`place-${q.target}`).classList.add('target');
             
-            // 마커 위치 초기화 (애니메이션 중이 아닐 때만)
             if(!window.isAnimating) {
                 renderMarker('a', data.pA.pos);
                 if(data.pB) renderMarker('b', data.pB.pos);
             }
-            
-            // 버튼 상태 제어 (내 Ready 상태에 따라)
             updateMyButtons(data);
         }
 
         document.getElementById('ui-score-a').innerText = `P1: ${data.pA.score}/9`;
         document.getElementById('ui-score-b').innerText = `P2: ${data.pB ? data.pB.score : 0}/9`;
 
-        // 명령어 리스트 세팅
         renderCmdList('A', data.pA.cmds);
         if(data.pB) renderCmdList('B', data.pB.cmds);
 
-        // Ready 버튼 세팅
         document.getElementById('btn-ready-a').classList.toggle('active', data.pA.ready);
         document.getElementById('btn-ready-b').classList.toggle('active', data.pB ? data.pB.ready : false);
     }
@@ -502,7 +504,6 @@
         const isReady = myData.ready;
         const panel = document.getElementById(`panel-${myRole}`);
         
-        // 방향, 숫자, 단위 버튼 제어
         panel.querySelectorAll('.btn-dir').forEach(b => b.disabled = isReady || localPending.dir);
         panel.querySelectorAll('.btn-num').forEach(b => b.disabled = isReady || !localPending.dir || localPending.num);
         panel.querySelectorAll('.btn-unit').forEach(b => b.disabled = isReady || !localPending.num);
@@ -525,9 +526,9 @@
             const newCmd = { str: str, action: localPending.dir, dist: localPending.num };
             
             await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] }).catch(console.error);
-            localPending = {}; // 초기화
+            localPending = {};
         }
-        updateMyButtons(localDataCache); // 즉각적인 UI 반영
+        updateMyButtons(localDataCache);
     };
 
     window.handleClear = async () => {
@@ -546,7 +547,7 @@
         await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
     };
 
-    // 7. 애니메이션 및 채점 (양쪽 클라이언트에서 동시에 실행됨)
+    // 7. 애니메이션 및 채점
     window.isAnimating = false;
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
@@ -557,13 +558,11 @@
         let posA = {...data.pA.pos};
         let posB = {...data.pB.pos};
         
-        // 동시 애니메이션 실행
         await Promise.all([
             animatePath('a', posA, data.pA.cmds),
             animatePath('b', posB, data.pB.cmds)
         ]);
 
-        // 애니메이션이 끝나면 Host(A)가 점수 판정 후 다음 라운드로 넘김
         if(myRole === 'A') {
             const targetId = QUESTIONS[data.currentQ].target;
             const tObj = PLACES.find(p => p.id === targetId);
@@ -577,14 +576,12 @@
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
             
             if(nextQ >= 9) {
-                // 게임 끝
                 await updateDoc(roomRef, {
                     state: 'finished',
                     'pA.score': aScore, 'pB.score': bScore
                 }).catch(console.error);
                 finishGame(aScore, bScore, data.pA.name, data.pB.name);
             } else {
-                // 다음 문제 세팅
                 await updateDoc(roomRef, {
                     state: 'playing', currentQ: nextQ,
                     'pA.score': aScore, 'pB.score': bScore,
@@ -593,11 +590,6 @@
                     'pA.pos': {...QUESTIONS[nextQ].a_start},
                     'pB.pos': {...QUESTIONS[nextQ].b_start}
                 }).catch(console.error);
-            }
-        } else {
-            // Guest(B)는 만약 끝났으면 화면 표시
-            if(data.currentQ >= 8 && localDataCache.state === 'finished') {
-                 // DB 감지로 처리됨
             }
         }
         window.isAnimating = false;
@@ -623,7 +615,7 @@
         }
     }
 
-    // 8. 그리기 유틸 함수
+    // 8. 그리기 유틸
     function drawMap() {
         const map = document.getElementById('map');
         GRID_Y.forEach(y => map.innerHTML += `<div class="road-h" style="top:${y-20}px;"></div><div class="dash-h" style="top:${y-1}px;"></div>`);
@@ -664,14 +656,12 @@
         document.getElementById('result-msg').innerText = winMsg;
 
         try {
-            // 호스트(A)일 때만 명예의 전당 기록 (중복 방지)
             const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
             if(myRole === 'A') {
                 await addDoc(hofRef, { name: nameA, affiliation: localDataCache.pA.affiliation, score: scoreA, ts: Date.now() });
                 await addDoc(hofRef, { name: nameB, affiliation: localDataCache.pB.affiliation, score: scoreB, ts: Date.now() });
             }
             
-            // 랭킹 불러오기 (간단한 읽기)
             setTimeout(async () => {
                 const snap = await getDocs(hofRef);
                 let records = [];
@@ -684,7 +674,7 @@
                     <td>${r.affiliation}</td>
                     <td><b>${r.name}</b></td><td style="color:#d81b60; font-weight:bold;">${r.score}점</td></tr>
                 `).join('');
-            }, 1000); // DB 갱신 대기
+            }, 1000);
 
         } catch (e) {
             console.error("Hall of Fame Error:", e);
