@@ -1015,6 +1015,11 @@
         let myWin = (myRole === 'A') ? aWin : bWin;
         let oppWin = (myRole === 'A') ? bWin : aWin;
 
+        let aHistory = data.pA.history || [];
+        let bHistory = data.pB.history || [];
+        aHistory.push(aWin);
+        bHistory.push(bWin);
+
         if (myWin) {
             playSound('success');
             if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, zIndex: 3000 });
@@ -1028,29 +1033,36 @@
 
         await delay(3000); 
 
+        const nextQ = data.currentQ + 1;
+
         if(myRole === 'A') {
             let aScore = data.pA.score + (aWin ? 1 : 0);
             let bScore = data.pB.score + (bWin ? 1 : 0);
-            const nextQ = data.currentQ + 1;
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
             
             // 교사 설정의 총 라운드 수만큼만 진행
             if(nextQ >= gameConfig.totalRounds) {
                 await updateDoc(roomRef, {
                     state: 'finished',
-                    'pA.score': aScore, 'pB.score': bScore
+                    'pA.score': aScore, 'pB.score': bScore,
+                    'pA.history': aHistory, 'pB.history': bHistory
                 }).catch(console.error);
-                finishGame(aScore, bScore, data.pA.name, data.pB.name);
+                finishGame(aScore, bScore, data.pA.name, data.pB.name, aHistory, bHistory);
             } else {
                 await updateDoc(roomRef, {
                     state: 'playing', currentQ: nextQ,
                     'pA.score': aScore, 'pB.score': bScore,
+                    'pA.history': aHistory, 'pB.history': bHistory,
                     'pA.cmds': [], 'pB.cmds': [],
                     'pA.ready': false, 'pB.ready': false,
                     'pA.pos': {...QUESTIONS[nextQ].a_start},
                     'pB.pos': {...QUESTIONS[nextQ].b_start},
                     deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
                 }).catch(console.error);
+            }
+        } else {
+            if(nextQ >= gameConfig.totalRounds) {
+                finishGame(data.pA.score + (aWin?1:0), data.pB.score + (bWin?1:0), data.pA.name, data.pB.name, aHistory, bHistory);
             }
         }
         window.isAnimating = false;
@@ -1124,12 +1136,24 @@
         list.scrollTop = list.scrollHeight;
     }
 
-    async function finishGame(scoreA, scoreB, nameA, nameB) {
+    async function finishGame(scoreA, scoreB, nameA, nameB, aHistory, bHistory) {
         document.getElementById('result-overlay').classList.remove('hidden');
         if(roomUnsubscribe) roomUnsubscribe();
         
         let winMsg = scoreA > scoreB ? `${nameA} 승리! 🏆` : (scoreB > scoreA ? `${nameB} 승리! 🏆` : "아름다운 무승부! 🤝");
         document.getElementById('result-msg').innerText = winMsg;
+        
+        // 라운드별 기록 렌더링
+        const myHistory = myRole === 'A' ? aHistory : bHistory;
+        const historyContainer = document.getElementById('round-history-container');
+        if(myHistory && historyContainer) {
+            historyContainer.innerHTML = myHistory.map((res, idx) => `
+                <div class="history-item ${res ? 'correct' : 'incorrect'}">
+                    <div>Q${idx + 1}</div>
+                    <div>${res ? '✅' : '❌'}</div>
+                </div>
+            `).join('');
+        }
         
         if (typeof confetti === 'function') confetti({ particleCount: 400, spread: 150, origin: { y: 0.5 }, zIndex: 4000 });
         playSound('success');
@@ -1144,24 +1168,8 @@
                 await addDoc(hofRef, { name: nameA, affiliation: localDataCache.pA.affiliation, score: scoreA, result: resA, ts: Date.now() });
                 await addDoc(hofRef, { name: nameB, affiliation: localDataCache.pB.affiliation, score: scoreB, result: resB, ts: Date.now() });
             }
-            
-            setTimeout(async () => {
-                const snap = await getDocs(hofRef);
-                let records = [];
-                snap.forEach(doc => records.push(doc.data()));
-                records.sort((a,b) => b.score - a.score);
-                records = records.slice(0, 10);
-                
-                document.getElementById('leaderboard-body').innerHTML = records.map((r, i) => `
-                    <tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${i+1}위</td>
-                    <td>${r.affiliation}</td>
-                    <td><b>${r.name}</b></td><td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
-                `).join('');
-            }, 1000);
-
         } catch (e) {
             console.error("Hall of Fame Error:", e);
-            document.getElementById('leaderboard-body').innerHTML = `<tr><td colspan="4" style="color:red;">랭킹 로딩 실패</td></tr>`;
         }
     }
 </script>
