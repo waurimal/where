@@ -18,19 +18,19 @@
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
         .hidden { display: none !important; }
         .setup-box { background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); text-align: center; border: 4px solid #3498db; width: 500px; position: relative; }
-        .setup-box h1 { font-family: 'Jua', sans-serif; font-size: 48px; color: #3498db; margin-top: 0; margin-bottom: 10px; }
+        .setup-box h1 { font-family: 'Jua', sans-serif; font-size: 48px; color: #3498db; margin-top: 0; margin-bottom: 20px; }
         
         input, .lobby-select { padding: 12px; font-size: 18px; border: 2px solid #ddd; border-radius: 10px; width: 100%; text-align: center; outline: none; font-family: 'Jua', sans-serif; margin-bottom: 15px; }
         input:focus, .lobby-select:focus { border-color: #3498db; }
         .lobby-select { appearance: none; cursor: pointer; background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23333' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 10px center; }
         
-        .btn { background: #3498db; color: white; border: none; padding: 15px; font-size: 20px; border-radius: 15px; cursor: pointer; font-family: 'Jua', sans-serif; transition: 0.2s; width: 100%; margin-bottom: 10px; }
+        .btn { background: #3498db; color: white; border: none; padding: 15px; font-size: 22px; border-radius: 15px; cursor: pointer; font-family: 'Jua', sans-serif; transition: 0.2s; width: 100%; margin-bottom: 10px; }
         .btn:hover { background: #2980b9; transform: scale(1.02); }
         .btn.secondary { background: #9b59b6; }
         .btn.secondary:hover { background: #8e44ad; }
         .btn:disabled { background: #ccc !important; cursor: not-allowed; transform: none; }
 
-        /* 좌우 패널 - P1(Red), P2(Blue) 테마 적용 */
+        /* 좌우 패널 */
         .side-panel { width: 310px; height: 100%; padding: 15px; display: flex; flex-direction: column; position: relative; z-index: 100; }
         .panel-a { background-color: #ffe8e8; border-right: 3px solid #ffcdd2; }
         .panel-b { background-color: #e3f2fd; border-left: 3px solid #bbdefb; }
@@ -49,7 +49,6 @@
         .btn-num { background-color: #ba68c8; }
         .btn-unit { background-color: #ab47bc; }
         
-        /* 어구 블록 추가 UI */
         .conclusion-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; border: 2px dashed rgba(0,0,0,0.1); margin-bottom: 5px; }
         .select-group { display: flex; gap: 5px; align-items: center; font-weight: bold; color: #555; }
         .sel-custom { flex: 1; padding: 6px; border-radius: 6px; border: 2px solid #ddd; font-family: 'Nunito', sans-serif; font-weight: bold; outline: none; }
@@ -75,36 +74,31 @@
         .top-info { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: white; padding: 8px 15px; border-radius: 10px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .room-code { color: #f1c40f; letter-spacing: 2px; font-size: 20px;}
 
-        .question-bar { background: white; border-radius: 15px; padding: 15px; text-align: center; border: 3px solid #bdc3c7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        /* [수정사항 1] 타이머가 겹치지 않게 질문 박스 상단 여백을 늘리고 타이머를 위로 돌출시킴 */
+        .question-bar { background: white; border-radius: 15px; padding: 25px 15px 15px; text-align: center; border: 3px solid #bdc3c7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px; }
         .question-bar h2 { margin: 0; font-size: 30px; color: #2c3e50; }
         .question-bar p { margin: 5px 0 0 0; color: #7f8c8d; font-family: 'Jua', sans-serif; font-size: 20px; }
         
-        /* 타이머 UI 추가 */
-        #timer-display { position: absolute; top: 15px; left: 20px; font-size: 24px; font-weight: bold; color: #e74c3c; font-family: 'Jua', sans-serif; }
+        #timer-display { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 4px 20px; border-radius: 20px; font-size: 20px; font-weight: bold; font-family: 'Jua', sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 2px solid white; z-index: 10; white-space: nowrap; }
 
         .tts-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: #f1c40f; color: white; border: none; font-size: 22px; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 0 #f39c12; }
         .tts-btn:active { transform: translateY(calc(-50% + 4px)); box-shadow: none; }
 
-        /* 지도 및 도로 디자인 */
+        /* 지도 */
         .map-container { flex-grow: 1; background-color: #81c784; border-radius: 15px; position: relative; overflow: hidden; border: 6px solid #558b2f; box-shadow: inset 0 0 30px rgba(0,0,0,0.3); }
-        
         .city-block { position: absolute; background: #aed581; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); z-index: 0; }
         .city-block::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.15); border-top: 1px dashed rgba(255,255,255,0.5); }
-
         .road-h { position: absolute; width: 100%; height: 26px; background: #546e7a; z-index: 1; border-top: 2px solid #37474f; border-bottom: 2px solid #37474f; }
         .road-v { position: absolute; height: 100%; width: 26px; background: #546e7a; z-index: 1; border-left: 2px solid #37474f; border-right: 2px solid #37474f; }
         .road-center { position: absolute; width: 22px; height: 22px; background: #546e7a; z-index: 2; }
-        
         .dash-h { position: absolute; width: 100%; height: 4px; background: repeating-linear-gradient(90deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
         .dash-v { position: absolute; height: 100%; width: 4px; background: repeating-linear-gradient(0deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
 
-        /* 건물 디자인 */
         .place { position: absolute; width: 52px; height: 46px; background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; border: 3px solid #2c3e50; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); transition: transform 0.3s, border-color 0.3s; }
         .place.target { border-color: #e74c3c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 0 #c0392b, 0 0 25px #e74c3c; transform: translate(-50%, -55%) scale(1.15); z-index: 6;}
         .place .emoji { font-size: 20px; margin-bottom: -2px; }
         .place .name { font-size: 9px; font-weight: 900; background: rgba(255,255,255,0.95); padding: 1px 3px; border-radius: 3px; margin-top: -2px; color: #2c3e50; text-align: center; white-space: nowrap;}
 
-        /* 플레이어 마커 & 이름표 (Red & Blue) */
         .marker { position: absolute; width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; z-index: 10; transition: left 0.4s linear, top 0.4s linear; transform: translate(-50%, -50%); border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
         .marker-a { background-color: #d32f2f; }
         .marker-b { background-color: #1976d2; display: none; }
@@ -121,7 +115,12 @@
         
         #ingame-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(44, 62, 80, 0.9); color: white; padding: 20px 40px; border-radius: 15px; font-size: 28px; font-weight: bold; z-index: 100; text-align: center; display: none; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border: 3px solid #34495e; }
 
-        /* 교사 대시보드 테이블 UI */
+        /* [수정사항 2] 라운드 히스토리 및 교사 테이블 UI */
+        .history-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
+        .history-item { padding: 10px; border-radius: 10px; font-size: 20px; font-weight: bold; border: 2px solid; width: calc(33.333% - 10px); display:flex; justify-content:space-between; align-items:center;}
+        .history-item.correct { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
+        .history-item.incorrect { background: #ffebee; border-color: #f44336; color: #c62828; }
+
         .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
         .leaderboard-table th, .leaderboard-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 18px; font-family: 'Jua', sans-serif; text-align: center;}
         .leaderboard-table th { background: #e3f2fd; color: #1976d2; border-top: 3px solid #90caf9; position: sticky; top: 0; z-index: 10;}
@@ -138,9 +137,17 @@
     <div id="lobby-overlay" class="overlay">
         <div class="setup-box">
             <h1>🗺️ Find the Place</h1>
-            <p style="font-size:18px; color:#666; margin-bottom: 20px;">친구와 떨어져서 즐기는 실시간 길 찾기 배틀!</p>
+            <p style="font-size:18px; color:#666; margin-bottom: 30px;">친구와 떨어져서 즐기는 실시간 길 찾기 배틀!</p>
             
-            <div id="lobby-state-0">
+            <!-- [수정사항 2] 메인 메뉴 화면 -->
+            <div id="lobby-state-main">
+                <button class="btn" style="padding: 20px; font-size: 26px;" onclick="document.getElementById('lobby-state-main').classList.add('hidden'); document.getElementById('lobby-state-0').classList.remove('hidden');">🎮 게임하기</button>
+                <button class="btn secondary" onclick="openHOF()">🏆 명예의 전당</button>
+                <button class="btn" style="background:#95a5a6;" onclick="openTeacherLogin()">⚙️ 교사 모드</button>
+            </div>
+
+            <!-- 정보 입력 화면 -->
+            <div id="lobby-state-0" class="hidden">
                 <div style="display:flex; gap:10px; margin-bottom:15px;">
                     <select id="inp-grade" class="lobby-select" style="margin-bottom:0;">
                         <option value="" disabled selected>학년</option>
@@ -161,6 +168,7 @@
                 </div>
                 <input type="text" id="inp-name" placeholder="이름 입력" maxlength="8">
                 <button id="btn-next-step" class="btn">다음 단계로</button>
+                <button class="btn secondary" style="background:#bdc3c7;" onclick="document.getElementById('lobby-state-0').classList.add('hidden'); document.getElementById('lobby-state-main').classList.remove('hidden');">뒤로 가기</button>
             </div>
             
             <div id="lobby-state-1" class="hidden">
@@ -177,9 +185,20 @@
                 <div style="margin: 30px; font-size: 22px; color: #3498db; font-weight: bold;">상대방을 기다리는 중... <i class="fa-solid fa-spinner fa-spin"></i></div>
             </div>
             <p id="sys-msg" style="color:#e74c3c; font-weight:bold; margin-top:15px; line-height: 1.4; font-size: 18px;"></p>
-            
-            <!-- 교사 모드 진입 버튼 -->
-            <button onclick="openTeacherLogin()" style="position:absolute; bottom:15px; right:20px; background:transparent; border:none; cursor:pointer; color:#95a5a6; font-size:16px; font-weight:bold; font-family: 'Jua', sans-serif;"><i class="fa-solid fa-gear"></i> 교사 모드</button>
+        </div>
+    </div>
+
+    <!-- 명예의 전당 오버레이 (메인화면용) -->
+    <div id="hof-overlay" class="overlay hidden">
+        <div class="setup-box" style="width: 650px; height: 80%; display:flex; flex-direction:column; border-color: #f39c12;">
+            <h1 style="font-size: 42px; color:#f39c12;">🏆 명예의 전당</h1>
+            <div style="overflow-y:auto; flex-grow:1; border:2px solid #eee; border-radius:10px; margin-bottom: 20px;">
+                <table class="leaderboard-table">
+                    <thead style="background:#fcf3cf; color:#d35400;"><tr><th>순위</th><th>소속</th><th>이름</th><th>점수</th></tr></thead>
+                    <tbody id="main-hof-body"><tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
+                </table>
+            </div>
+            <button class="btn secondary" style="background:#f39c12;" onclick="document.getElementById('hof-overlay').classList.add('hidden');">닫기</button>
         </div>
     </div>
 
@@ -242,16 +261,16 @@
         </div>
     </div>
 
-    <!-- 2. 결과 오버레이 (학생용) -->
+    <!-- 2. 결과 오버레이 (학생용 - 라운드 히스토리 표시) -->
     <div id="result-overlay" class="overlay hidden">
         <div class="setup-box" style="width: 650px;">
             <h1 style="font-size: 56px; color:#e74c3c;">🏆 게임 종료!</h1>
             <p id="result-msg" style="font-size:32px; color:#e74c3c; margin-bottom: 20px; font-weight: bold;"></p>
-            <table class="leaderboard-table">
-                <thead><tr><th>순위</th><th>소속</th><th>이름</th><th>점수</th></tr></thead>
-                <tbody id="leaderboard-body"><tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
-            </table>
-            <button onclick="location.reload()" class="btn secondary" style="margin-top:30px;">메인 화면으로 돌아가기</button>
+            
+            <h3 style="color:#555; text-align:left; font-family:'Jua';">나의 라운드별 결과</h3>
+            <div id="round-history-container" class="history-grid"></div>
+
+            <button onclick="location.reload()" class="btn secondary" style="margin-top:30px;">초기 화면으로 돌아가기</button>
         </div>
     </div>
 
@@ -600,6 +619,32 @@
         }
     });
 
+    // --- 메인화면 명예의 전당 함수 ---
+    window.openHOF = async () => {
+        document.getElementById('hof-overlay').classList.remove('hidden');
+        const tbody = document.getElementById('main-hof-body');
+        tbody.innerHTML = '<tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+        try {
+            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame'));
+            let records = [];
+            snap.forEach(doc => records.push(doc.data()));
+            records.sort((a,b) => b.score - a.score);
+            records = records.slice(0, 10);
+            
+            if(records.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">등록된 기록이 없습니다.</td></tr>';
+            } else {
+                tbody.innerHTML = records.map((r, i) => `
+                    <tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${i+1}위</td>
+                    <td>${r.affiliation}</td>
+                    <td><b>${r.name}</b></td><td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
+                `).join('');
+            }
+        } catch(e) {
+            tbody.innerHTML = '<tr><td colspan="4" style="color:red;">데이터 로딩 실패</td></tr>';
+        }
+    };
+
     // --- 교사 모드 함수 ---
     window.openTeacherLogin = () => {
         document.getElementById('inp-teacher-pw').value = '';
@@ -702,7 +747,7 @@
             if(remain <= 0) {
                 remain = 0;
                 clearInterval(timerInterval);
-                display.innerText = `⏳ 종료!`;
+                display.innerText = `⏳ 시간 종료!`;
                 if(myRole === 'A' && localDataCache.state === 'playing') {
                     // 시간 종료 시 호스트가 강제 애니메이션 진행
                     updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId), { state: 'animating' }).catch(console.error);
@@ -748,7 +793,7 @@
             const roomData = {
                 state: 'waiting',
                 currentQ: 0,
-                pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start} },
+                pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start}, history: [] },
                 pB: null
             };
 
@@ -792,7 +837,7 @@
                 
                 // P2가 들어오면 playing으로 변경하며 첫 문제 타이머 설정
                 const updatePayload = {
-                    pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start} },
+                    pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start}, history: [] },
                     state: 'playing',
                     deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
                 };
@@ -829,6 +874,7 @@
                 document.getElementById('lobby-overlay').classList.add('hidden');
             } else if(myRole === 'A') {
                 document.getElementById('lobby-overlay').classList.remove('hidden');
+                document.getElementById('lobby-state-main').classList.add('hidden');
                 document.getElementById('lobby-state-0').classList.add('hidden');
                 document.getElementById('lobby-state-1').classList.add('hidden');
                 document.getElementById('lobby-state-2').classList.remove('hidden');
