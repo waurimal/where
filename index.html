@@ -237,7 +237,7 @@
 <script type="module">
     // Firebase 설정
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, getDocs } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     const firebaseConfig = {
@@ -254,7 +254,7 @@
     const db = getFirestore(app);
     
     // 필수 글로벌 변수
-    const appId = typeof __app_id !== 'undefined' ? __app_id : 'find-the-place-multi';
+    const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'find-the-place-multi';
     let currentUser = null;
     let myRole = null; // 'A' (Host) or 'B' (Guest)
     let myRoomId = null;
@@ -305,9 +305,29 @@
 
     // 1. 초기화 및 Auth
     drawMap();
-    signInAnonymously(auth).catch(e => sysMsg("서버 연결 실패"));
+    
+    // Firebase 안정성 향상을 위한 엄격한 인증 처리
+    const initAuth = async () => {
+        try {
+            sysMsg("서버에 연결 중입니다...");
+            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
+            } else {
+                await signInAnonymously(auth);
+            }
+            sysMsg(""); // 인증 성공 시 메시지 지움
+        } catch (e) {
+            console.error("Auth Error:", e);
+            sysMsg("인증 실패! Firebase 익명 로그인이 켜져 있는지 확인하세요.");
+        }
+    };
+    initAuth();
+
     onAuthStateChanged(auth, user => {
-        if(user) currentUser = user;
+        if(user) {
+            currentUser = user;
+            if(document.getElementById('sys-msg').innerText.includes("연결 중")) sysMsg("");
+        }
     });
 
     // 1.5. 사용자 정보 입력 (다음 버튼)
@@ -328,50 +348,75 @@
         sysMsg(""); // 에러 메시지 초기화
     };
 
-    // 2. 방 만들기 (Host)
+    // 2. 방 만들기 (Host) - 에러 핸들링 추가
     document.getElementById('btn-create').onclick = async () => {
-        if(!currentUser) return sysMsg("서버 연결 대기중...");
-
-        myRole = 'A';
-        myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+        if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
         
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-        await setDoc(roomRef, {
-            state: 'waiting', // waiting, playing, animating, finished
-            currentQ: 0,
-            pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start} },
-            pB: null // Guest가 들어올 자리
-        });
+        try {
+            document.getElementById('btn-create').disabled = true;
+            sysMsg("방을 생성하는 중입니다...");
 
-        document.getElementById('lobby-state-1').classList.add('hidden');
-        document.getElementById('lobby-state-2').classList.remove('hidden');
-        document.getElementById('display-room-code').innerText = myRoomId;
-        
-        listenRoom(roomRef);
+            myRole = 'A';
+            myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            await setDoc(roomRef, {
+                state: 'waiting', // waiting, playing, animating, finished
+                currentQ: 0,
+                pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start} },
+                pB: null // Guest가 들어올 자리
+            });
+
+            document.getElementById('lobby-state-1').classList.add('hidden');
+            document.getElementById('lobby-state-2').classList.remove('hidden');
+            document.getElementById('display-room-code').innerText = myRoomId;
+            
+            listenRoom(roomRef);
+            sysMsg("");
+        } catch (e) {
+            console.error("Create Room Error:", e);
+            sysMsg(`방 생성 실패: 권한 부족 또는 연결 오류 (${e.message})`);
+        } finally {
+            document.getElementById('btn-create').disabled = false;
+        }
     };
 
-    // 3. 방 참여 (Guest)
+    // 3. 방 참여 (Guest) - 에러 핸들링 추가
     document.getElementById('btn-join').onclick = async () => {
-        if(!currentUser) return sysMsg("서버 연결 대기중...");
+        if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
         const code = document.getElementById('inp-room').value.trim();
         if(!code) return sysMsg("참여 코드를 입력하세요!");
 
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-        const docSnap = await getDoc(roomRef);
-        
-        if(docSnap.exists()) {
-            const data = docSnap.data();
-            if(data.pB !== null) return sysMsg("이미 게임이 진행중인 방입니다.");
+        try {
+            document.getElementById('btn-join').disabled = true;
+            sysMsg("방에 접속하는 중입니다...");
+
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
+            const docSnap = await getDoc(roomRef);
             
-            myRole = 'B';
-            myRoomId = code;
-            await updateDoc(roomRef, {
-                pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start} },
-                state: 'playing' // P2가 들어오면 바로 게임 시작
-            });
-            listenRoom(roomRef);
-        } else {
-            sysMsg("방 코드를 찾을 수 없습니다.");
+            if(docSnap.exists()) {
+                const data = docSnap.data();
+                if(data.pB !== null) {
+                    document.getElementById('btn-join').disabled = false;
+                    return sysMsg("이미 게임이 진행중인 방입니다.");
+                }
+                
+                myRole = 'B';
+                myRoomId = code;
+                await updateDoc(roomRef, {
+                    pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start} },
+                    state: 'playing' // P2가 들어오면 바로 게임 시작
+                });
+                sysMsg("");
+                listenRoom(roomRef);
+            } else {
+                sysMsg("방 코드를 찾을 수 없습니다.");
+            }
+        } catch (e) {
+            console.error("Join Room Error:", e);
+            sysMsg(`접속 실패: 권한 부족 또는 연결 오류 (${e.message})`);
+        } finally {
+            document.getElementById('btn-join').disabled = false;
         }
     };
 
@@ -402,7 +447,7 @@
             if(data.state === 'playing' && data.pA.ready && data.pB && data.pB.ready) {
                 // 둘 다 ready면 Host(A)가 상태를 animating으로 변경
                 if(myRole === 'A') {
-                    updateDoc(roomRef, { state: 'animating' });
+                    updateDoc(roomRef, { state: 'animating' }).catch(console.error);
                 }
             }
         });
@@ -479,7 +524,7 @@
             const str = `${localPending.dir} ${localPending.num} ${val}.`;
             const newCmd = { str: str, action: localPending.dir, dist: localPending.num };
             
-            await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] });
+            await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] }).catch(console.error);
             localPending = {}; // 초기화
         }
         updateMyButtons(localDataCache); // 즉각적인 UI 반영
@@ -488,7 +533,7 @@
     window.handleClear = async () => {
         if(localDataCache.state !== 'playing') return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-        await updateDoc(roomRef, { [`p${myRole}.cmds`]: [] });
+        await updateDoc(roomRef, { [`p${myRole}.cmds`]: [] }).catch(console.error);
         localPending = {};
         updateMyButtons(localDataCache);
     };
@@ -498,7 +543,7 @@
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
         const myKey = `p${myRole}`;
         const isReady = localDataCache[myKey].ready;
-        await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady });
+        await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
     };
 
     // 7. 애니메이션 및 채점 (양쪽 클라이언트에서 동시에 실행됨)
@@ -536,7 +581,7 @@
                 await updateDoc(roomRef, {
                     state: 'finished',
                     'pA.score': aScore, 'pB.score': bScore
-                });
+                }).catch(console.error);
                 finishGame(aScore, bScore, data.pA.name, data.pB.name);
             } else {
                 // 다음 문제 세팅
@@ -547,7 +592,7 @@
                     'pA.ready': false, 'pB.ready': false,
                     'pA.pos': {...QUESTIONS[nextQ].a_start},
                     'pB.pos': {...QUESTIONS[nextQ].b_start}
-                });
+                }).catch(console.error);
             }
         } else {
             // Guest(B)는 만약 끝났으면 화면 표시
@@ -642,6 +687,7 @@
             }, 1000); // DB 갱신 대기
 
         } catch (e) {
+            console.error("Hall of Fame Error:", e);
             document.getElementById('leaderboard-body').innerHTML = `<tr><td colspan="4" style="color:red;">랭킹 로딩 실패</td></tr>`;
         }
     }
