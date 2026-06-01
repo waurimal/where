@@ -4,15 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Find the Place - 실시간 1:1 대결</title>
+    <!-- 폭죽 효과 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * { box-sizing: border-box; user-select: none; }
+        /* 창 크기가 변해도 중앙에 위치하도록 설정 */
         body { margin: 0; background-color: #e2e8f0; font-family: 'Nunito', 'Jua', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
         
-        .app-container { width: 100%; max-width: 1280px; height: 100vh; max-height: 720px; background-color: #fffaf0; position: relative; border-radius: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); overflow: hidden; display: flex; }
+        /* 고정 크기를 가지며 스케일링으로 반응형 대응 */
+        .app-container { width: 1280px; height: 720px; background-color: #fffaf0; position: relative; border-radius: 20px; box-shadow: 0 15px 30px rgba(0,0,0,0.2); overflow: hidden; display: flex; flex-shrink: 0; transform-origin: center center; transition: transform 0.1s ease-out; }
         
         /* 모달 / 오버레이 (로비, 결과) */
         .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); z-index: 1000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
@@ -70,7 +74,8 @@
         .question-bar { background: white; border-radius: 15px; padding: 15px; text-align: center; border: 2px solid #ddd; position: relative; }
         .question-bar h2 { margin: 0; font-size: 28px; color: #333; }
         .question-bar p { margin: 5px 0 0 0; color: #666; font-family: 'Jua', sans-serif; font-size: 18px; }
-        .tts-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: #fff9c4; border: none; font-size: 24px; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; }
+        .tts-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: #fff9c4; border: none; font-size: 24px; width: 45px; height: 45px; border-radius: 50%; cursor: pointer; transition: transform 0.1s;}
+        .tts-btn:active { transform: translateY(-50%) scale(0.9); }
 
         /* 지도 */
         .map-container { flex-grow: 1; background-color: #aed581; border-radius: 15px; position: relative; overflow: hidden; border: 4px solid #7cb342; }
@@ -95,7 +100,7 @@
         .score-b { color: #f57f17; }
         
         /* 인게임 모달 알림 */
-        #ingame-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 20px 40px; border-radius: 15px; font-size: 24px; font-weight: bold; z-index: 100; text-align: center; display: none; }
+        #ingame-msg { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.85); color: white; padding: 20px 40px; border-radius: 15px; font-size: 28px; font-weight: bold; z-index: 100; text-align: center; display: none; white-space: nowrap; }
 
         /* 명예의 전당 */
         .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
@@ -236,6 +241,60 @@
 </div>
 
 <script type="module">
+    // [기능 1] 브라우저 창 크기에 따른 화면 자동 축소/확대 (반응형)
+    function resizeApp() {
+        const app = document.querySelector('.app-container');
+        const scaleX = window.innerWidth / 1280;
+        const scaleY = window.innerHeight / 720;
+        const scale = Math.min(scaleX, scaleY) * 0.95; // 화면에 꽉 차지 않게 5% 여백
+        
+        if (scale < 1) {
+            app.style.transform = `scale(${scale})`;
+        } else {
+            app.style.transform = 'scale(1)'; // 원래 크기보다 커지진 않게 제한
+        }
+    }
+    window.addEventListener('resize', resizeApp);
+    resizeApp(); // 초기 로드 시 1회 실행
+
+    // [기능 3] 효과음 재생을 위한 웹 오디오 설정 (사운드 파일 다운로드 없이 자체 생성)
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    // 오디오 컨텍스트는 사용자 액션이 있어야 활성화됨 (다음 버튼 클릭시 활성화)
+    document.body.addEventListener('click', () => {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+    }, { once: true });
+
+    function playSound(type) {
+        if(audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        if(type === 'success') {
+            // 정답 (띠리링~ 올라가는 경쾌한 소리)
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); // E5
+            osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); // G5
+            osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); // C6
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.5);
+        } else {
+            // 오답 (삐이익~ 내려가는 소리)
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
+            osc.frequency.linearRampToValueAtTime(200, audioCtx.currentTime + 0.3);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.3);
+        }
+    }
+
     // Firebase 설정
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -254,23 +313,21 @@
     const auth = getAuth(app);
     const db = getFirestore(app);
     
-    // 필수 글로벌 변수
     const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'find-the-place-multi';
     let currentUser = null;
-    let myRole = null; // 'A' (Host) or 'B' (Guest)
+    let myRole = null; 
     let myRoomId = null;
     let roomUnsubscribe = null;
     let myName = "";
     let myAffiliation = "";
+    let lastReadQuestionIndex = -1; // TTS 중복 재생 방지용
     
-    // 로컬 상태 (명령어 빌드용)
     let localPending = {}; 
-    let localDataCache = null; // Snapshot 저장용
+    let localDataCache = null;
 
-    // 맵 데이터
-    const GRID_X = [80, 210, 340, 470]; // 4 columns
-    const GRID_Y = [60, 180, 300];      // 3 rows
-    const DIRS = [[0,-1], [1,0], [0,1], [-1,0]]; // N, E, S, W
+    const GRID_X = [80, 210, 340, 470]; 
+    const GRID_Y = [60, 180, 300];      
+    const DIRS = [[0,-1], [1,0], [0,1], [-1,0]]; 
     const ARROWS = ['▲', '▶', '▼', '◀'];
 
     const PLACES = [
@@ -304,7 +361,6 @@
         setTimeout(() => el.style.display = 'none', 3000);
     }
 
-    // 1. 초기화 및 Auth
     drawMap();
     
     const initAuth = async () => {
@@ -328,7 +384,6 @@
         }
     });
 
-    // 1.5. 사용자 정보 입력 (다음 버튼)
     document.getElementById('btn-next-step').onclick = () => {
         const g = document.getElementById('inp-grade').value.trim();
         const c = document.getElementById('inp-class').value.trim();
@@ -343,29 +398,25 @@
         document.getElementById('welcome-msg').innerText = `환영합니다, ${myName}님!`;
         document.getElementById('lobby-state-0').classList.add('hidden');
         document.getElementById('lobby-state-1').classList.remove('hidden');
-        sysMsg(""); // 에러 메시지 초기화
+        sysMsg(""); 
     };
 
-    // 타임아웃 헬퍼 함수
     const fetchWithTimeout = (promise, ms) => {
         const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("시간 초과")), ms));
         return Promise.race([promise, timeout]);
     };
 
-    // 2. 방 만들기 (Host)
     document.getElementById('btn-create').onclick = async () => {
         if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
-        
         try {
             document.getElementById('btn-create').disabled = true;
-            sysMsg("방을 생성하는 중입니다...\n(만약 계속 멈춰있다면 Firebase 콘솔에서 Firestore를 생성했는지 확인하세요!)");
+            sysMsg("방을 생성하는 중입니다...");
 
             myRole = 'A';
             myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
             
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
             
-            // 8초 이상 걸리면 에러로 간주 (Firestore 미생성 방지)
             await fetchWithTimeout(setDoc(roomRef, {
                 state: 'waiting',
                 currentQ: 0,
@@ -380,26 +431,22 @@
             listenRoom(roomRef);
             sysMsg("");
         } catch (e) {
-            console.error("Create Room Error:", e);
             sysMsg(`⚠️ 방 생성 실패\n원인: Firebase 설정 오류 또는 Firestore 미생성\n해결: Firebase 접속 -> 빌드 -> Firestore Database -> 데이터베이스 만들기(테스트 모드) 진행`);
         } finally {
             document.getElementById('btn-create').disabled = false;
         }
     };
 
-    // 3. 방 참여 (Guest)
     document.getElementById('btn-join').onclick = async () => {
-        if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다. 잠시만 기다려주세요.");
+        if(!currentUser) return sysMsg("서버 연결이 아직 완료되지 않았습니다.");
         const code = document.getElementById('inp-room').value.trim();
         if(!code) return sysMsg("참여 코드를 입력하세요!");
 
         try {
             document.getElementById('btn-join').disabled = true;
-            sysMsg("방에 접속하는 중입니다...\n(만약 계속 멈춰있다면 Firebase 설정을 확인하세요!)");
+            sysMsg("방에 접속하는 중입니다...");
 
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-            
-            // 데이터 가져오기 (8초 타임아웃)
             const docSnap = await fetchWithTimeout(getDoc(roomRef), 8000);
             
             if(docSnap.exists()) {
@@ -421,22 +468,18 @@
                 sysMsg("입력하신 방 코드를 찾을 수 없습니다.");
             }
         } catch (e) {
-            console.error("Join Room Error:", e);
-            sysMsg(`⚠️ 접속 실패\n원인: Firebase 설정 오류 또는 Firestore 미생성\n해결: 호스트의 Firebase 환경이 정상인지 확인해주세요.`);
+            sysMsg(`⚠️ 접속 실패\n원인: 호스트의 Firebase 환경 확인 필요`);
         } finally {
             document.getElementById('btn-join').disabled = false;
         }
     };
 
-    // 4. Firestore 실시간 리스너
     function listenRoom(roomRef) {
         document.getElementById('lobby-overlay').classList.add('hidden');
         document.getElementById('my-role-badge').innerText = myRole === 'A' ? "P1(Host)" : "P2(Guest)";
         document.getElementById('room-code-badge').innerText = myRoomId;
         
-        // 상대방 패널 컨트롤 비활성화
         const oppRole = myRole === 'A' ? 'B' : 'A';
-        const myPanel = document.getElementById(`panel-${myRole}`);
         const oppPanel = document.getElementById(`panel-${oppRole}`);
         oppPanel.style.opacity = '0.6';
         oppPanel.style.pointerEvents = 'none';
@@ -456,13 +499,21 @@
                     updateDoc(roomRef, { state: 'animating' }).catch(console.error);
                 }
             }
-        }, (error) => {
-            console.error("Snapshot error:", error);
-            sysMsg("서버와의 실시간 데이터 통신이 끊어졌습니다.");
         });
     }
 
-    // 5. UI 업데이트
+    // TTS 기능: 문제 읽어주기
+    window.speakQuestion = () => {
+        const text = document.getElementById('question-text').innerText;
+        // 재생 중인 음성이 있다면 취소
+        if(speechSynthesis.speaking) speechSynthesis.cancel();
+        
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'en-US'; 
+        u.rate = 0.9; // 약간 천천히 읽어주기
+        speechSynthesis.speak(u);
+    };
+
     function updateUI(data) {
         document.getElementById('name-a').innerText = data.pA.name;
         if(data.pB) {
@@ -484,6 +535,12 @@
                 if(data.pB) renderMarker('b', data.pB.pos);
             }
             updateMyButtons(data);
+
+            // [기능 2] 문제 시작 시 자동 TTS 재생
+            if(lastReadQuestionIndex !== data.currentQ && !window.isAnimating) {
+                lastReadQuestionIndex = data.currentQ;
+                setTimeout(speakQuestion, 500); // UI가 렌더링 된 직후에 읽도록 약간의 지연
+            }
         }
 
         document.getElementById('ui-score-a').innerText = `P1: ${data.pA.score}/9`;
@@ -496,7 +553,6 @@
         document.getElementById('btn-ready-b').classList.toggle('active', data.pB ? data.pB.ready : false);
     }
 
-    // 버튼 활성/비활성 제어
     function updateMyButtons(data) {
         const myData = data[`p${myRole}`];
         if(!myData) return;
@@ -512,7 +568,6 @@
         panel.querySelector('.ready-btn').innerText = isReady ? "WAITING..." : "READY";
     }
 
-    // 6. 사용자 액션 핸들러 (Firestore 업데이트)
     window.handleCmd = async (type, val) => {
         if(localDataCache.state !== 'playing') return;
         const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
@@ -547,13 +602,12 @@
         await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
     };
 
-    // 7. 애니메이션 및 채점
     window.isAnimating = false;
     const delay = ms => new Promise(res => setTimeout(res, ms));
 
     async function runAnimations(data) {
         window.isAnimating = true;
-        showMsg("애니메이션 진행 중...");
+        showMsg("캐릭터가 이동합니다! 🏃‍♂️");
         
         let posA = {...data.pA.pos};
         let posB = {...data.pB.pos};
@@ -563,15 +617,34 @@
             animatePath('b', posB, data.pB.cmds)
         ]);
 
-        if(myRole === 'A') {
-            const targetId = QUESTIONS[data.currentQ].target;
-            const tObj = PLACES.find(p => p.id === targetId);
-            
-            let aScore = data.pA.score;
-            let bScore = data.pB.score;
-            if(posA.x === tObj.x && posA.y === tObj.y) aScore++;
-            if(posB.x === tObj.x && posB.y === tObj.y) bScore++;
+        // 애니메이션 후 정답 판정
+        const targetId = QUESTIONS[data.currentQ].target;
+        const tObj = PLACES.find(p => p.id === targetId);
+        
+        let aWin = (posA.x === tObj.x && posA.y === tObj.y);
+        let bWin = (posB.x === tObj.x && posB.y === tObj.y);
 
+        let myWin = (myRole === 'A') ? aWin : bWin;
+        let oppWin = (myRole === 'A') ? bWin : aWin;
+
+        // [기능 3] 정답 판정 시각 효과 및 사운드
+        if (myWin) {
+            playSound('success');
+            // 폭죽 효과 (Z-index를 높여 화면 맨 위에 표시)
+            confetti({ particleCount: 150, spread: 80, origin: { y: 0.6 }, zIndex: 2000 });
+            if (oppWin) showMsg("둘 다 완벽하게 길을 찾았어요! 🎉");
+            else showMsg("목적지에 도착했습니다! 정답! 🎉");
+        } else {
+            playSound('fail');
+            if (oppWin) showMsg("앗, 나는 실패했지만 상대방은 도착했어요!");
+            else showMsg("목적지를 찾지 못했어요 😢");
+        }
+
+        await delay(2500); // 축하/위로 메시지 확인을 위해 2.5초 대기
+
+        if(myRole === 'A') {
+            let aScore = data.pA.score + (aWin ? 1 : 0);
+            let bScore = data.pB.score + (bWin ? 1 : 0);
             const nextQ = data.currentQ + 1;
             const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
             
@@ -601,21 +674,23 @@
             else if(cmd.action === 'Turn right') pos.d = (pos.d + 1) % 4;
             
             renderMarker(markerId, pos);
-            await delay(300);
+            await delay(400); // 회전 시간 확보
             
             for(let i=0; i<cmd.dist; i++) {
                 let nx = pos.x + DIRS[pos.d][0];
                 let ny = pos.y + DIRS[pos.d][1];
+                // 지도 바깥으로 나가는 것 방지
                 if(nx >= 0 && nx < 4 && ny >= 0 && ny < 3) {
                     pos.x = nx; pos.y = ny;
                     renderMarker(markerId, pos);
                     await delay(600);
+                } else {
+                    break; // 길이 없으면 이동 중지
                 }
             }
         }
     }
 
-    // 8. 그리기 유틸
     function drawMap() {
         const map = document.getElementById('map');
         GRID_Y.forEach(y => map.innerHTML += `<div class="road-h" style="top:${y-20}px;"></div><div class="dash-h" style="top:${y-1}px;"></div>`);
@@ -641,19 +716,16 @@
         list.scrollTop = list.scrollHeight;
     }
 
-    window.speakQuestion = () => {
-        const text = document.getElementById('question-text').innerText;
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-US'; speechSynthesis.speak(u);
-    };
-
-    // 9. 게임 종료 및 랭킹
     async function finishGame(scoreA, scoreB, nameA, nameB) {
         document.getElementById('result-overlay').classList.remove('hidden');
         if(roomUnsubscribe) roomUnsubscribe();
         
         let winMsg = scoreA > scoreB ? `${nameA} 승리! 🎉` : (scoreB > scoreA ? `${nameB} 승리! 🎉` : "무승부! 🤝");
         document.getElementById('result-msg').innerText = winMsg;
+        
+        // 종료 시에도 폭죽!
+        confetti({ particleCount: 300, spread: 100, origin: { y: 0.5 }, zIndex: 3000 });
+        playSound('success');
 
         try {
             const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
