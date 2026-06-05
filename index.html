@@ -74,7 +74,7 @@
         .top-info { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: white; padding: 8px 15px; border-radius: 10px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
         .room-code { color: #f1c40f; letter-spacing: 2px; font-size: 20px;}
 
-        /* [수정사항 1] 타이머가 겹치지 않게 질문 박스 상단 여백을 늘리고 타이머를 위로 돌출시킴 */
+        /* 타이머가 겹치지 않게 질문 박스 상단 여백을 늘리고 타이머를 위로 돌출시킴 */
         .question-bar { background: white; border-radius: 15px; padding: 25px 15px 15px; text-align: center; border: 3px solid #bdc3c7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px; }
         .question-bar h2 { margin: 0; font-size: 30px; color: #2c3e50; }
         .question-bar p { margin: 5px 0 0 0; color: #7f8c8d; font-family: 'Jua', sans-serif; font-size: 20px; }
@@ -115,7 +115,7 @@
         
         #ingame-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(44, 62, 80, 0.9); color: white; padding: 20px 40px; border-radius: 15px; font-size: 28px; font-weight: bold; z-index: 100; text-align: center; display: none; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border: 3px solid #34495e; }
 
-        /* [수정사항 2] 라운드 히스토리 및 교사 테이블 UI */
+        /* 라운드 히스토리 및 교사 테이블 UI */
         .history-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
         .history-item { padding: 10px; border-radius: 10px; font-size: 20px; font-weight: bold; border: 2px solid; width: calc(33.333% - 10px); display:flex; justify-content:space-between; align-items:center;}
         .history-item.correct { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
@@ -142,7 +142,7 @@
             <h1>🗺️ Find the Place</h1>
             <p style="font-size:18px; color:#666; margin-bottom: 30px;">친구와 떨어져서 즐기는 실시간 길 찾기 배틀!</p>
             
-            <!-- [수정사항 2] 메인 메뉴 화면 -->
+            <!-- 메인 메뉴 화면 -->
             <div id="lobby-state-main">
                 <button class="btn" style="padding: 20px; font-size: 26px;" onclick="document.getElementById('lobby-state-main').classList.add('hidden'); document.getElementById('lobby-state-0').classList.remove('hidden');">🎮 게임하기</button>
                 <button class="btn secondary" onclick="openHOF()">🏆 명예의 전당</button>
@@ -191,14 +191,14 @@
         </div>
     </div>
 
-    <!-- 명예의 전당 오버레이 (메인화면용) -->
+    <!-- 명예의 전당 오버레이 (메인화면용) - 이름 제외 -->
     <div id="hof-overlay" class="overlay hidden">
         <div class="setup-box" style="width: 650px; height: 80%; display:flex; flex-direction:column; border-color: #f39c12;">
             <h1 style="font-size: 42px; color:#f39c12;">🏆 명예의 전당</h1>
             <div style="overflow-y:auto; flex-grow:1; border:2px solid #eee; border-radius:10px; margin-bottom: 20px;">
                 <table class="leaderboard-table">
-                    <thead style="background:#fcf3cf; color:#d35400;"><tr><th>순위</th><th>소속</th><th>이름</th><th>점수</th></tr></thead>
-                    <tbody id="main-hof-body"><tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
+                    <thead style="background:#fcf3cf; color:#d35400;"><tr><th>순위</th><th>소속</th><th>점수</th></tr></thead>
+                    <tbody id="main-hof-body"><tr><td colspan="3">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
                 </table>
             </div>
             <button class="btn secondary" style="background:#f39c12;" onclick="document.getElementById('hof-overlay').classList.add('hidden');">닫기</button>
@@ -216,7 +216,7 @@
         </div>
     </div>
 
-    <!-- 1.6. 교사 대시보드 오버레이 -->
+    <!-- 1.6. 교사 대시보드 오버레이 (관리 목적이므로 이름 유지) -->
     <div id="teacher-dashboard-overlay" class="overlay hidden">
         <div class="setup-box" style="width: 900px; height: 90%; display:flex; flex-direction:column; border-color: #9b59b6;">
             <h2 style="color:#8e44ad; font-family:'Jua', sans-serif; margin-bottom:20px;">교사 관리 대시보드</h2>
@@ -622,11 +622,11 @@
         }
     });
 
-    // --- 메인화면 명예의 전당 함수 ---
+    // --- 메인화면 명예의 전당 함수 (이름 제외) ---
     window.openHOF = async () => {
         document.getElementById('hof-overlay').classList.remove('hidden');
         const tbody = document.getElementById('main-hof-body');
-        tbody.innerHTML = '<tr><td colspan="4">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
         try {
             const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame'));
             let records = [];
@@ -635,16 +635,17 @@
             records = records.slice(0, 10);
             
             if(records.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4">등록된 기록이 없습니다.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="3">등록된 기록이 없습니다.</td></tr>';
             } else {
+                // public HOF에서는 이름을 제외하고 순위, 소속, 점수만 표시
                 tbody.innerHTML = records.map((r, i) => `
                     <tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${i+1}위</td>
                     <td>${r.affiliation}</td>
-                    <td><b>${r.name}</b></td><td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
+                    <td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
                 `).join('');
             }
         } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="4" style="color:red;">데이터 로딩 실패</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" style="color:red;">데이터 로딩 실패</td></tr>';
         }
     };
 
