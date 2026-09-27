@@ -614,17 +614,17 @@
 
         /* 50:50 대칭 분할 레이아웃 */
         .home-split-grid {
-            display: grid !important;
-            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-            gap: 1.5rem !important;
-            align-items: stretch !important;
-            width: 100% !important;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.5rem;
+            align-items: stretch;
+            width: 100%;
         }
 
         @media (max-width: 960px) {
             .home-split-grid {
-                grid-template-columns: 1fr !important;
-                gap: 1.2rem !important;
+                grid-template-columns: 1fr;
+                gap: 1.2rem;
             }
         }
 
@@ -1426,9 +1426,21 @@
                 const el = document.getElementById(id);
                 if (el) {
                     el.classList.add('hidden');
-                    el.style.display = 'none';
+                    el.style.setProperty('display', 'none', 'important');
                 }
             });
+
+            // 상단 타이틀 헤더(.hdr) 처리: 게임 화면 및 결과 화면에서는 헤더를 숨겨 상단에 바로 배치
+            const hdrEl = document.querySelector('.hdr');
+            if (hdrEl) {
+                if (screenId === 'screen-game' || screenId === 'screen-result') {
+                    hdrEl.classList.add('hidden');
+                    hdrEl.style.setProperty('display', 'none', 'important');
+                } else {
+                    hdrEl.classList.remove('hidden');
+                    hdrEl.style.removeProperty('display');
+                }
+            }
 
             const mainEl = document.getElementById('mainContainer');
             if (mainEl) {
@@ -1442,10 +1454,11 @@
             const target = document.getElementById(screenId);
             if (target) {
                 target.classList.remove('hidden');
+                target.style.removeProperty('display');
                 if (screenId === 'screen-home') {
-                    target.style.display = 'grid';
+                    target.style.setProperty('display', 'grid', 'important');
                 } else {
-                    target.style.display = 'flex';
+                    target.style.setProperty('display', 'flex', 'important');
                 }
             }
 
@@ -1453,7 +1466,7 @@
                 setTimeout(resizeGameApp, 10);
                 requestAnimationFrame(resizeGameApp);
             }
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: 0, behavior: 'instant' });
         };
 
         window.backToHome = () => {
