@@ -3,1248 +3,2340 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Find the Place - 실시간 1:1 대결</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Jua&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <title>Find the Place (길 찾기 게임) - 와우리말 에듀테크</title>
+    <!-- Pretendard 최신 웹폰트 -->
+    <link rel="stylesheet" as="style" crossorigin href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+    <!-- Tailwind CSS v4 CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- FontAwesome 6.5.1 -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <!-- Confetti -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- 와우리말 공통 테마 CSS -->
+    <link rel="stylesheet" href="../common/waurimal-theme.css">
+
     <style>
-        * { box-sizing: border-box; user-select: none; }
-        body { margin: 0; background-color: #2c3e50; font-family: 'Nunito', 'Jua', sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-        
-        .app-container { width: 1280px; height: 720px; background-color: #f4f6f7; position: relative; border-radius: 20px; box-shadow: 0 15px 40px rgba(0,0,0,0.5); overflow: hidden; display: flex; flex-shrink: 0; transform-origin: center center; transition: transform 0.1s ease-out; }
-        
-        .overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.95); z-index: 2000; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-        .hidden { display: none !important; }
-        .setup-box { background: #fff; padding: 40px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); text-align: center; border: 4px solid #3498db; width: 500px; position: relative; }
-        .setup-box h1 { font-family: 'Jua', sans-serif; font-size: 48px; color: #3498db; margin-top: 0; margin-bottom: 20px; }
-        
-        input, .lobby-select { padding: 12px; font-size: 18px; border: 2px solid #ddd; border-radius: 10px; width: 100%; text-align: center; outline: none; font-family: 'Jua', sans-serif; margin-bottom: 15px; }
-        input:focus, .lobby-select:focus { border-color: #3498db; }
-        .lobby-select { appearance: none; cursor: pointer; background: white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23333' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E") no-repeat right 10px center; }
-        
-        .btn { background: #3498db; color: white; border: none; padding: 15px; font-size: 22px; border-radius: 15px; cursor: pointer; font-family: 'Jua', sans-serif; transition: 0.2s; width: 100%; margin-bottom: 10px; }
-        .btn:hover { background: #2980b9; transform: scale(1.02); }
-        .btn.secondary { background: #9b59b6; }
-        .btn.secondary:hover { background: #8e44ad; }
-        .btn:disabled { background: #ccc !important; cursor: not-allowed; transform: none; }
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, sans-serif;
+        }
+
+        body {
+            background-color: #F8FAFC;
+            color: #1E293B;
+            min-height: 100vh;
+        }
+
+        /* 확실한 화면 전환 보장 */
+        .hidden {
+            display: none !important;
+        }
+        .home-split-grid.hidden {
+            display: none !important;
+        }
+
+        /* 50:50 대칭 분할 레이아웃 */
+        .home-split-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 1.5rem;
+            align-items: stretch;
+            width: 100%;
+        }
+
+        @media (max-width: 1024px) {
+            .home-split-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 상단 시인성 서브타이틀 박스 */
+        .hdr-sub-box {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #F0FDF4;
+            color: #166534;
+            border: 1px solid #BBF7D0;
+            padding: 4px 12px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: -0.01em;
+        }
+
+        /* 카드 컨테이너 */
+        .where-card {
+            background: #FFFFFF;
+            border: 1px solid #E2E8F0;
+            border-radius: 1.25rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        /* 히어로 버튼 */
+        .hero-btn {
+            background: linear-gradient(135deg, #16A34A 0%, #15803D 100%);
+            color: white;
+            padding: 1rem 1.25rem;
+            border-radius: 1rem;
+            font-weight: 800;
+            box-shadow: 0 10px 20px -3px rgba(22, 163, 74, 0.35);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .hero-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 14px 24px -2px rgba(22, 163, 74, 0.45);
+        }
+
+        /* ────────────────────────────────────────────────────────── */
+        /* 인게임 전용 스타일 (4x3 지도 및 패널) */
+        /* ────────────────────────────────────────────────────────── */
+        /* 가로 스크롤 원천 방지 */
+        body {
+            overflow-x: hidden;
+        }
+
+        .game-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            width: 100%;
+            overflow: hidden;
+            padding: 0;
+        }
+
+        .game-scale-outer {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            overflow: hidden;
+            width: 1260px;
+            height: 720px;
+        }
+
+        .app-container {
+            width: 1260px;
+            height: 720px;
+            background-color: #F8FAFC;
+            position: relative;
+            border-radius: 24px;
+            border: 2px solid #CBD5E1;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            display: flex;
+            flex-shrink: 0;
+            transform-origin: top center;
+            transition: transform 0.1s ease-out;
+        }
 
         /* 좌우 패널 */
-        .side-panel { width: 310px; height: 100%; padding: 15px; display: flex; flex-direction: column; position: relative; z-index: 100; }
-        .panel-a { background-color: #ffe8e8; border-right: 3px solid #ffcdd2; }
-        .panel-b { background-color: #e3f2fd; border-left: 3px solid #bbdefb; }
+        .side-panel {
+            width: 310px;
+            height: 100%;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            z-index: 100;
+        }
+        .panel-a {
+            background-color: #FEF2F2;
+            border-right: 3px solid #FECACA;
+        }
+        .panel-b {
+            background-color: #EFF6FF;
+            border-left: 3px solid #BFDBFE;
+        }
         
-        .panel-header { font-size: 24px; font-weight: 900; margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
-        .player-info { display: flex; align-items: center; gap: 10px; }
-        .panel-a .panel-header { color: #d32f2f; }
-        .panel-b .panel-header { color: #1976d2; }
-        .avatar { width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 24px; background: white; border: 2px solid; }
+        .panel-header {
+            font-size: 20px;
+            font-weight: 900;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .player-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .panel-a .panel-header { color: #DC2626; }
+        .panel-b .panel-header { color: #2563EB; }
+        .avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            background: white;
+            border: 2px solid currentColor;
+        }
 
-        .cmd-group { display: flex; gap: 5px; margin-bottom: 10px; }
-        .btn-cmd { flex: 1; padding: 8px 4px; font-size: 15px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; color: white; font-family: 'Nunito', sans-serif; transition: 0.1s; box-shadow: 0 4px 0 rgba(0,0,0,0.15); }
-        .btn-cmd:active:not(:disabled) { transform: translateY(4px); box-shadow: none; }
-        .btn-cmd:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; transform: translateY(4px); }
-        .btn-dir { background-color: #00bcd4; }
-        .btn-num { background-color: #ba68c8; }
-        .btn-unit { background-color: #ab47bc; }
+        .cmd-group {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        .btn-cmd {
+            flex: 1;
+            padding: 8px 4px;
+            font-size: 13px;
+            font-weight: 800;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            color: white;
+            transition: all 0.1s;
+            box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+        }
+        .btn-cmd:active:not(:disabled) {
+            transform: translateY(3px);
+            box-shadow: none;
+        }
+        .btn-cmd:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+            transform: translateY(3px);
+        }
+        .btn-dir { background-color: #0284C7; }
+        .btn-num { background-color: #9333EA; }
+        .btn-unit { background-color: #7E22CE; }
         
-        .conclusion-box { background: rgba(255,255,255,0.6); padding: 10px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; border: 2px dashed rgba(0,0,0,0.1); margin-bottom: 5px; }
-        .select-group { display: flex; gap: 5px; align-items: center; font-weight: bold; color: #555; }
-        .sel-custom { flex: 1; padding: 6px; border-radius: 6px; border: 2px solid #ddd; font-family: 'Nunito', sans-serif; font-weight: bold; outline: none; }
+        .conclusion-box {
+            background: rgba(255,255,255,0.7);
+            padding: 8px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border: 1px dashed rgba(0,0,0,0.15);
+            margin-bottom: 6px;
+        }
+        .select-group {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            font-weight: bold;
+            color: #475569;
+            font-size: 12px;
+        }
+        .sel-custom {
+            flex: 1;
+            padding: 5px;
+            border-radius: 6px;
+            border: 1px solid #CBD5E1;
+            font-weight: 700;
+            font-size: 11px;
+            outline: none;
+            background: white;
+        }
         
-        .clear-btn { background: #7f8c8d; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; box-shadow: 0 3px 0 #34495e; }
-        .clear-btn:active:not(:disabled) { transform: translateY(3px); box-shadow: none; }
-        .clear-btn:disabled { background: #ccc; box-shadow: none; transform: translateY(3px); }
+        .clear-btn {
+            background: #64748B;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 800;
+            font-size: 12px;
+            box-shadow: 0 2px 0 #334155;
+        }
+        .clear-btn:active:not(:disabled) { transform: translateY(2px); box-shadow: none; }
+        .clear-btn:disabled { background: #CBD5E1; box-shadow: none; }
 
-        .cmd-list { flex-grow: 1; background: white; border-radius: 10px; padding: 10px; overflow-y: auto; border: 2px dashed #ccc; font-size: 16px; font-weight: bold; color: #333; }
-        .cmd-item { padding: 8px 5px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px;}
-        .cmd-item i { color: #888; font-size: 14px; }
+        .cmd-list {
+            flex-grow: 1;
+            background: white;
+            border-radius: 10px;
+            padding: 8px;
+            overflow-y: auto;
+            border: 1px dashed #CBD5E1;
+            font-size: 13px;
+            font-weight: 700;
+            color: #334155;
+        }
+        .cmd-item {
+            padding: 6px 4px;
+            border-bottom: 1px solid #F1F5F9;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .cmd-item i { color: #94A3B8; font-size: 12px; }
         
-        .ready-btn { width: 100%; padding: 15px; font-size: 24px; font-weight: 900; color: white; border: none; border-radius: 15px; margin-top: 10px; cursor: pointer; transition: 0.2s; box-shadow: 0 5px 0 rgba(0,0,0,0.15); }
-        .panel-a .ready-btn { background-color: #ef9a9a; color: #d32f2f; box-shadow: 0 5px 0 #e57373; }
-        .panel-b .ready-btn { background-color: #90caf9; color: #1976d2; box-shadow: 0 5px 0 #64b5f6; }
-        .panel-a .ready-btn.active { background-color: #d32f2f; color: white; box-shadow: none; transform: translateY(5px); }
-        .panel-b .ready-btn.active { background-color: #1976d2; color: white; box-shadow: none; transform: translateY(5px); }
+        .ready-btn {
+            width: 100%;
+            padding: 12px;
+            font-size: 18px;
+            font-weight: 900;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            margin-top: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 0 rgba(0,0,0,0.15);
+        }
+        .panel-a .ready-btn { background-color: #FCA5A5; color: #991B1B; box-shadow: 0 4px 0 #F87171; }
+        .panel-b .ready-btn { background-color: #93C5FD; color: #1E40AF; box-shadow: 0 4px 0 #60A5FA; }
+        .panel-a .ready-btn.active { background-color: #DC2626; color: white; box-shadow: none; transform: translateY(4px); }
+        .panel-b .ready-btn.active { background-color: #2563EB; color: white; box-shadow: none; transform: translateY(4px); }
         .ready-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
         /* 중앙 패널 */
-        .center-panel { flex-grow: 1; display: flex; flex-direction: column; padding: 15px; gap: 10px; position: relative; background: #eceff1; }
+        .center-panel {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            gap: 8px;
+            position: relative;
+            background: #F1F5F9;
+        }
         
-        .top-info { display: flex; justify-content: space-between; align-items: center; background: #34495e; color: white; padding: 8px 15px; border-radius: 10px; font-size: 18px; font-weight: bold; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        .room-code { color: #f1c40f; letter-spacing: 2px; font-size: 20px;}
+        .top-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #1E293B;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 14px;
+            font-weight: 800;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .room-code { color: #FACC15; letter-spacing: 2px; font-weight: 900; font-size: 16px; }
 
-        /* 타이머가 겹치지 않게 질문 박스 상단 여백을 늘리고 타이머를 위로 돌출시킴 */
-        .question-bar { background: white; border-radius: 15px; padding: 25px 15px 15px; text-align: center; border: 3px solid #bdc3c7; position: relative; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-top: 15px; }
-        .question-bar h2 { margin: 0; font-size: 30px; color: #2c3e50; }
-        .question-bar p { margin: 5px 0 0 0; color: #7f8c8d; font-family: 'Jua', sans-serif; font-size: 20px; }
+        .question-bar {
+            background: white;
+            border-radius: 14px;
+            padding: 18px 14px 12px;
+            text-align: center;
+            border: 2px solid #E2E8F0;
+            position: relative;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.03);
+            margin-top: 10px;
+        }
+        .question-bar h2 { margin: 0; font-size: 24px; color: #0F172A; font-weight: 900; }
+        .question-bar p { margin: 4px 0 0 0; color: #64748B; font-size: 14px; font-weight: 700; }
         
-        #timer-display { position: absolute; top: -18px; left: 50%; transform: translateX(-50%); background: #e74c3c; color: white; padding: 4px 20px; border-radius: 20px; font-size: 20px; font-weight: bold; font-family: 'Jua', sans-serif; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 2px solid white; z-index: 10; white-space: nowrap; }
+        #timer-display {
+            position: absolute;
+            top: -14px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #EF4444;
+            color: white;
+            padding: 2px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 900;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 2px solid white;
+            z-index: 10;
+            white-space: nowrap;
+        }
 
-        .tts-btn { position: absolute; right: 15px; top: 50%; transform: translateY(-50%); background: #f1c40f; color: white; border: none; font-size: 22px; width: 48px; height: 48px; border-radius: 50%; cursor: pointer; transition: transform 0.1s; box-shadow: 0 4px 0 #f39c12; }
-        .tts-btn:active { transform: translateY(calc(-50% + 4px)); box-shadow: none; }
+        .tts-btn {
+            position: absolute;
+            right: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #F59E0B;
+            color: white;
+            border: none;
+            font-size: 18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.1s;
+            box-shadow: 0 3px 0 #D97706;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .tts-btn:active { transform: translateY(calc(-50% + 3px)); box-shadow: none; }
 
         /* 지도 */
-        .map-container { flex-grow: 1; background-color: #81c784; border-radius: 15px; position: relative; overflow: hidden; border: 6px solid #558b2f; box-shadow: inset 0 0 30px rgba(0,0,0,0.3); }
-        .city-block { position: absolute; background: #aed581; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.1); z-index: 0; }
-        .city-block::after { content: ''; position: absolute; top: 50%; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.15); border-top: 1px dashed rgba(255,255,255,0.5); }
-        .road-h { position: absolute; width: 100%; height: 26px; background: #546e7a; z-index: 1; border-top: 2px solid #37474f; border-bottom: 2px solid #37474f; }
-        .road-v { position: absolute; height: 100%; width: 26px; background: #546e7a; z-index: 1; border-left: 2px solid #37474f; border-right: 2px solid #37474f; }
-        .road-center { position: absolute; width: 22px; height: 22px; background: #546e7a; z-index: 2; }
-        .dash-h { position: absolute; width: 100%; height: 4px; background: repeating-linear-gradient(90deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
-        .dash-v { position: absolute; height: 100%; width: 4px; background: repeating-linear-gradient(0deg, transparent, transparent 15px, #fbc02d 15px, #fbc02d 30px); z-index: 3;}
+        .map-container {
+            flex-grow: 1;
+            background-color: #86EFAC;
+            border-radius: 16px;
+            position: relative;
+            overflow: hidden;
+            border: 4px solid #4ADE80;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.15);
+        }
+        .city-block {
+            position: absolute;
+            background: #BBF7D0;
+            border-radius: 8px;
+            box-shadow: inset 0 0 8px rgba(0,0,0,0.08);
+            z-index: 0;
+        }
+        .city-block::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(0,0,0,0.1);
+            border-top: 1px dashed rgba(255,255,255,0.6);
+        }
+        .road-h {
+            position: absolute;
+            width: 100%;
+            height: 26px;
+            background: #475569;
+            z-index: 1;
+            border-top: 2px solid #334155;
+            border-bottom: 2px solid #334155;
+        }
+        .road-v {
+            position: absolute;
+            height: 100%;
+            width: 26px;
+            background: #475569;
+            z-index: 1;
+            border-left: 2px solid #334155;
+            border-right: 2px solid #334155;
+        }
+        .road-center {
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: #475569;
+            z-index: 2;
+        }
+        .dash-h {
+            position: absolute;
+            width: 100%;
+            height: 4px;
+            background: repeating-linear-gradient(90deg, transparent, transparent 15px, #FACC15 15px, #FACC15 30px);
+            z-index: 3;
+        }
+        .dash-v {
+            position: absolute;
+            height: 100%;
+            width: 4px;
+            background: repeating-linear-gradient(0deg, transparent, transparent 15px, #FACC15 15px, #FACC15 30px);
+            z-index: 3;
+        }
 
-        .place { position: absolute; width: 52px; height: 46px; background: #ffffff; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; border: 3px solid #2c3e50; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 8px rgba(0,0,0,0.3); transform: translate(-50%, -50%); transition: transform 0.3s, border-color 0.3s; }
-        .place.target { border-color: #e74c3c; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.1), 0 6px 0 #c0392b, 0 0 25px #e74c3c; transform: translate(-50%, -55%) scale(1.15); z-index: 6;}
-        .place .emoji { font-size: 20px; margin-bottom: -2px; }
-        .place .name { font-size: 9px; font-weight: 900; background: rgba(255,255,255,0.95); padding: 1px 3px; border-radius: 3px; margin-top: -2px; color: #2c3e50; text-align: center; white-space: nowrap;}
+        .place {
+            position: absolute;
+            width: 52px;
+            height: 46px;
+            background: #FFFFFF;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 5;
+            border: 2.5px solid #1E293B;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+            transform: translate(-50%, -50%);
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .place.target {
+            border-color: #EF4444;
+            box-shadow: 0 0 18px #EF4444;
+            transform: translate(-50%, -55%) scale(1.15);
+            z-index: 6;
+        }
+        .place .emoji { font-size: 18px; margin-bottom: -2px; }
+        .place .name {
+            font-size: 9px;
+            font-weight: 900;
+            background: rgba(255,255,255,0.95);
+            padding: 1px 3px;
+            border-radius: 3px;
+            margin-top: -2px;
+            color: #1E293B;
+            text-align: center;
+            white-space: nowrap;
+        }
 
-        .marker { position: absolute; width: 35px; height: 35px; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 20px; z-index: 10; transition: left 0.4s linear, top 0.4s linear; transform: translate(-50%, -50%); border: 3px solid white; box-shadow: 0 4px 8px rgba(0,0,0,0.5); }
-        .marker-a { background-color: #d32f2f; }
-        .marker-b { background-color: #1976d2; display: none; }
-        .dir-arrow { position: absolute; color: white; font-size: 16px; font-weight: 900; text-shadow: 0 1px 2px rgba(0,0,0,0.5); }
+        .marker {
+            position: absolute;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 18px;
+            z-index: 10;
+            transition: left 0.4s linear, top 0.4s linear;
+            transform: translate(-50%, -50%);
+            border: 3px solid white;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        .marker-a { background-color: #DC2626; }
+        .marker-b { background-color: #2563EB; display: none; }
+        .dir-arrow { position: absolute; color: white; font-size: 15px; font-weight: 900; }
         
-        .marker-name { position: absolute; top: 40px; background: rgba(255,255,255,0.95); font-size: 13px; font-weight: 900; padding: 2px 8px; border-radius: 6px; white-space: nowrap; box-shadow: 0 2px 5px rgba(0,0,0,0.3); border: 2px solid; pointer-events: none;}
-        .marker-a .marker-name { border-color: #d32f2f; color: #d32f2f; }
-        .marker-b .marker-name { border-color: #1976d2; color: #1976d2; }
+        .marker-name {
+            position: absolute;
+            top: 38px;
+            background: rgba(255,255,255,0.95);
+            font-size: 11px;
+            font-weight: 900;
+            padding: 2px 6px;
+            border-radius: 4px;
+            white-space: nowrap;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            border: 1.5px solid;
+            pointer-events: none;
+        }
+        .marker-a .marker-name { border-color: #DC2626; color: #DC2626; }
+        .marker-b .marker-name { border-color: #2563EB; color: #2563EB; }
 
-        .bottom-bar { background: white; border-radius: 15px; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; border: 3px solid #bdc3c7; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        .score-info { font-size: 22px; font-weight: 900; background: #f8f9fa; padding: 5px 15px; border-radius: 10px; border: 2px solid #eee;}
-        .score-a { color: #d32f2f; border-color: #ffcdd2; }
-        .score-b { color: #1976d2; border-color: #bbdefb; }
+        .bottom-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #E2E8F0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        .score-info {
+            font-size: 16px;
+            font-weight: 900;
+            background: #F8FAFC;
+            padding: 4px 12px;
+            border-radius: 8px;
+            border: 1.5px solid #E2E8F0;
+        }
+        .score-a { color: #DC2626; border-color: #FECACA; }
+        .score-b { color: #2563EB; border-color: #BFDBFE; }
         
-        #ingame-msg { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); background: rgba(44, 62, 80, 0.9); color: white; padding: 20px 40px; border-radius: 15px; font-size: 28px; font-weight: bold; z-index: 100; text-align: center; display: none; white-space: nowrap; box-shadow: 0 10px 30px rgba(0,0,0,0.4); border: 3px solid #34495e; }
+        #ingame-msg {
+            position: absolute;
+            top: 42%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(15, 23, 42, 0.92);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 16px;
+            font-size: 20px;
+            font-weight: 900;
+            z-index: 100;
+            text-align: center;
+            display: none;
+            white-space: nowrap;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            border: 2px solid #334155;
+        }
 
-        /* 라운드 히스토리 및 교사 테이블 UI */
-        .history-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 20px 0; }
-        .history-item { padding: 10px; border-radius: 10px; font-size: 20px; font-weight: bold; border: 2px solid; width: calc(33.333% - 10px); display:flex; justify-content:space-between; align-items:center;}
-        .history-item.correct { background: #e8f5e9; border-color: #4caf50; color: #2e7d32; }
-        .history-item.incorrect { background: #ffebee; border-color: #f44336; color: #c62828; }
+        /* 라운드 히스토리 */
+        .history-grid { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 16px 0; }
+        .history-item {
+            padding: 8px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 800;
+            border: 2px solid;
+            width: calc(33.333% - 8px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .history-item.correct { background: #ECFDF5; border-color: #10B981; color: #065F46; }
+        .history-item.incorrect { background: #FEF2F2; border-color: #EF4444; color: #991B1B; }
 
-        .leaderboard-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        .leaderboard-table th, .leaderboard-table td { padding: 12px; border-bottom: 1px solid #eee; font-size: 18px; font-family: 'Jua', sans-serif; text-align: center;}
-        .leaderboard-table th { background: #e3f2fd; color: #1976d2; border-top: 3px solid #90caf9; position: sticky; top: 0; z-index: 10;}
-        
-        .teacher-form-group { text-align: left; margin-bottom: 15px; font-family: 'Jua', sans-serif; }
-        .teacher-form-group label { display: block; font-size: 20px; color: #34495e; margin-bottom: 5px; }
+        /* 커스텀 스크롤바 */
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #F1F5F9; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 10px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+    
+        /* ════════════════════════════════════════════════════════════════════
+           ── 와우리말 단어 타자 연습(Wordtyping) 표준 규격 스타일 ──
+           ════════════════════════════════════════════════════════════════════ */
+        :root {
+            --primary: #059669;
+            --primary-hover: #047857;
+            --primary-light: #ECFDF5;
+            --accent: #10B981;
+            --accent-glow: rgba(5, 150, 105, 0.22);
+            --border-color: #D1FAE5;
+            --text-main: #0F172A;
+            --text-sub: #475569;
+            --card-bg: #FFFFFF;
+        }
 
-        /* 저작권 표시 UI */
-        .footer-credit { position: absolute; bottom: 15px; left: 0; width: 100%; text-align: center; color: rgba(255, 255, 255, 0.5); font-size: 14px; font-family: 'Nunito', 'Jua', sans-serif; z-index: 0; pointer-events: none; line-height: 1.5; }
+        /* 통일된 상단 타이틀 헤더 */
+        .hdr {
+            text-align: center;
+            padding: 0.2rem 0 0.8rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .hdr h1 {
+            font-size: clamp(1.45rem, 3vw, 2.1rem);
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, #064E3B 0%, #059669 50%, #10B981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.25rem;
+            line-height: 1.2;
+        }
+
+        .hdr-sub {
+            font-size: clamp(0.84rem, 1.8vw, 0.95rem);
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
+        /* 50:50 대칭 분할 레이아웃 */
+        .home-split-grid {
+            display: grid !important;
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 1.5rem !important;
+            align-items: stretch !important;
+            width: 100% !important;
+        }
+
+        @media (max-width: 960px) {
+            .home-split-grid {
+                grid-template-columns: 1fr !important;
+                gap: 1.2rem !important;
+            }
+        }
+
+        .home-left, .home-right {
+            width: 100%;
+            min-width: 0;
+        }
+
+        /* 게임 특징 및 규칙 안내 (Wordtyping 표준) */
+        .home-features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.65rem;
+            margin-top: 1rem;
+            background: #F8FAFC;
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            padding: 0.9rem 1rem;
+        }
+
+        .feature-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.7rem;
+        }
+
+        .feat-icon {
+            font-size: 1.15rem;
+            line-height: 1.2;
+            flex-shrink: 0;
+        }
+
+        .feat-title {
+            font-size: 0.88rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .feat-desc {
+            font-size: 0.8rem;
+            color: var(--text-sub);
+            margin-top: 0.1rem;
+            line-height: 1.35;
+        }
+
+        /* 하단 교사 모드 진입 링크 */
+        .teacher-link-wrap {
+            margin-top: 1.4rem;
+            padding-top: 1rem;
+            border-top: 1px dashed var(--border-color);
+            text-align: center;
+        }
+
+        .btn-teacher-link {
+            background: none;
+            border: none;
+            color: #64748B;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            padding: 0.4rem 0.8rem;
+            border-radius: 8px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn-teacher-link:hover {
+            color: var(--primary);
+            background: var(--primary-light);
+        }
+
+        .hof-header {
+            display: flex;
+            flex-direction: column;
+            gap: 0.2rem;
+            margin-bottom: 0.7rem;
+        }
+
+        .hof-title {
+            display: flex;
+            align-items: center;
+            gap: 0.45rem;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .hof-live-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            background: #ECFDF5;
+            color: #059669;
+            font-size: 0.7rem;
+            font-weight: 800;
+            padding: 0.2rem 0.55rem;
+            border-radius: 20px;
+            border: 1px solid #A7F3D0;
+            letter-spacing: 0.04em;
+        }
+
+        .pulse-dot {
+            width: 6px;
+            height: 6px;
+            background: #059669;
+            border-radius: 50%;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(5, 150, 105, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+        }
+
+        .hof-subtitle {
+            font-size: 0.78rem;
+            color: var(--text-sub);
+            font-weight: 500;
+        }
+
     </style>
 </head>
-<body>
+<body class="bg-slate-50 min-h-screen flex flex-col">
 
-<div class="app-container">
+    <!-- 상단 와우리말 통합 GNB 네비게이션 -->
+    <script src="../common/waurimal-nav.js"></script>
 
-    <!-- 1. 로비 오버레이 -->
-    <div id="lobby-overlay" class="overlay">
-        <div class="setup-box">
-            <h1>🗺️ Find the Place</h1>
-            <p style="font-size:18px; color:#666; margin-bottom: 30px;">친구와 떨어져서 즐기는 실시간 길 찾기 배틀!</p>
-            
-            <!-- 메인 메뉴 화면 -->
-            <div id="lobby-state-main">
-                <button class="btn" style="padding: 20px; font-size: 26px;" onclick="document.getElementById('lobby-state-main').classList.add('hidden'); document.getElementById('lobby-state-0').classList.remove('hidden');">🎮 게임하기</button>
-                <button class="btn secondary" onclick="openHOF()">🏆 명예의 전당</button>
-                <button class="btn" style="background:#95a5a6;" onclick="openTeacherLogin()">⚙️ 교사 모드</button>
-            </div>
+    <!-- 메인 컨텐츠 컨테이너 -->
+    <main id="mainContainer" class="flex-1 max-w-6xl w-full mx-auto px-4 py-4 md:py-6 flex flex-col">
 
-            <!-- 정보 입력 화면 -->
-            <div id="lobby-state-0" class="hidden">
-                <div style="display:flex; gap:10px; margin-bottom:15px;">
-                    <select id="inp-grade" class="lobby-select" style="margin-bottom:0;">
-                        <option value="" disabled selected>학년</option>
-                        <option value="1">1</option><option value="2">2</option>
-                        <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option>
-                    </select>
-                    <select id="inp-class" class="lobby-select" style="margin-bottom:0;">
-                        <option value="" disabled selected>반</option>
-                        <option value="1">1</option><option value="2">2</option>
-                        <option value="3">3</option><option value="4">4</option>
-                        <option value="5">5</option><option value="6">6</option>
-                        <option value="7">7</option><option value="8">8</option>
-                        <option value="9">9</option><option value="10">10</option>
-                        <option value="11">11</option><option value="12">12</option>
-                    </select>
-                    <input type="number" id="inp-num" placeholder="번호" min="1" max="50" style="margin-bottom:0;">
+        <!-- 헤더 영역 (타이틀 + 시인성 서브타이틀 박스 + 교사 관리 버튼) -->
+        <!-- 통일된 상단 타이틀 헤더 (단어타자연습 표준 동일 규격) -->
+        <div class="hdr">
+            <h1>길 찾기 게임 (Find the Place)</h1>
+            <p class="hdr-sub" id="hsub">방향과 위치 표현을 익히고 친구와 실시간으로 목적지를 찾아보는 1:1 길 찾기 배틀!</p>
+        </div>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- 1. 홈 화면 (screen-home: 50% vs 50% 대칭 분할) -->
+        <!-- ─────────────────────────────────────────── -->
+        <div id="screen-home" class="home-split-grid">
+            <!-- [좌측 50%]: 게임 모드 및 방 생성/참여 -->
+            <div class="home-left flex flex-col gap-4">
+                <div class="where-card space-y-4">
+                    <!-- 본문 내 중복 학생 정보 바 없음 (와우리말 최신 표준: GNB 일원화) -->
+
+                    <!-- 1:1 실시간 배틀 모드 박스 -->
+                    <div class="p-4 bg-emerald-50/70 border border-emerald-200 rounded-2xl space-y-3">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-black text-emerald-900">🎮 실시간 1:1 길 찾기 배틀</span>
+                            <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                                2인 대결
+                            </span>
+                        </div>
+                        <p class="text-xs text-slate-600 font-medium leading-relaxed">
+                            친구와 방 코드를 공유하여 함께 지도를 보고 누가 먼저 목적지를 정확히 찾아내는지 대결해보세요!
+                        </p>
+
+                        <!-- 방 생성 버튼 -->
+                        <button type="button" id="btn-create-room" onclick="createGameRoom()" class="hero-btn mt-2">
+                            <div class="flex items-center gap-2.5">
+                                <span class="text-xl">👑</span>
+                                <div class="text-left">
+                                    <div class="font-black text-base">새 게임 방 만들기 (Host)</div>
+                                    <div class="text-[11px] text-emerald-100 font-medium">내가 방장이 되어 참여 코드 생성</div>
+                                </div>
+                            </div>
+                            <i class="fa-solid fa-arrow-right text-lg text-emerald-200"></i>
+                        </button>
+
+                        <div class="relative flex py-2 items-center">
+                            <div class="flex-grow border-t border-emerald-200"></div>
+                            <span class="flex-shrink mx-3 text-slate-400 text-xs font-bold">또는 참여 코드로 입장</span>
+                            <div class="flex-grow border-t border-emerald-200"></div>
+                        </div>
+
+                        <!-- 방 참여 입력창 -->
+                        <div class="flex gap-2">
+                            <input type="text" id="homeRoomInput" placeholder="참여 코드 4자리 입력" maxlength="4" class="flex-1 p-3 bg-white border border-emerald-300 rounded-xl text-center text-base font-black tracking-widest text-slate-800 outline-none focus:ring-2 focus:ring-emerald-500 uppercase">
+                            <button type="button" id="btn-join-room" onclick="joinGameRoom()" class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-sm rounded-xl shadow transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-door-open"></i>
+                                <span>입장</span>
+                            </button>
+                        </div>
+                        <p id="homeLobbyMsg" class="text-xs font-bold text-rose-600 text-center min-h-[16px]"></p>
+                    </div>
+
+                    <!-- 대기 모달 카드 (방 생성 후 상대방 대기) -->
+                    <div id="boxWaitingRoom" class="hidden p-4 bg-amber-50 border border-amber-200 rounded-2xl text-center space-y-3">
+                        <div class="text-xs font-bold text-amber-800">친구에게 아래 참여 코드를 알려주세요!</div>
+                        <div class="text-3xl font-black text-rose-600 tracking-widest bg-white py-2 rounded-xl border border-amber-200 shadow-inner" id="waitingRoomCode">----</div>
+                        <div class="text-xs text-amber-700 font-bold flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-spinner fa-spin text-amber-600"></i>
+                            <span>상대방 접속을 기다리는 중...</span>
+                        </div>
+                        <button type="button" onclick="cancelWaitingRoom()" class="px-4 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-lg transition">
+                            방 취소하기
+                        </button>
+                    </div>
                 </div>
-                <input type="text" id="inp-name" placeholder="이름 입력" maxlength="8">
-                <button id="btn-next-step" class="btn">다음 단계로</button>
-                <button class="btn secondary" style="background:#bdc3c7;" onclick="document.getElementById('lobby-state-0').classList.add('hidden'); document.getElementById('lobby-state-main').classList.remove('hidden');">뒤로 가기</button>
+
+                <!-- 길 찾기 게임 안내 카드 -->
+
+                <!-- 길 찾기 표현 및 게임 특징 카드 (Wordtyping 표준 규격) -->
+                <div class="where-card bg-gradient-to-br from-white to-emerald-50/30 space-y-2.5">
+                    <div class="flex items-center gap-2">
+                        <span class="text-base">💡</span>
+                        <h3 class="font-black text-slate-800 text-sm">교과서 핵심 길 찾기 표현</h3>
+                    </div>
+                    <ul class="text-xs text-slate-600 space-y-1.5 leading-relaxed">
+                        <li>• <strong>직진 & 회전</strong>: <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">Go straight 1 block.</code>, <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">Turn left.</code>, <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">Turn right.</code></li>
+                        <li>• <strong>장소 기준 안내</strong>: <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">Turn left at the bank.</code> (은행에서 좌회전)</li>
+                        <li>• <strong>위치 설명</strong>: <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">It's next to the library.</code> (도서관 옆), <code class="bg-emerald-100 text-emerald-800 px-1 py-0.5 rounded font-mono font-bold">It's across from the school.</code> (학교 맞은편)</li>
+                    </ul>
+
+                    <!-- 게임 특징 및 규칙 안내 (Wordtyping 표준 3개 항목) -->
+                    <div class="home-features">
+                        <div class="feature-item">
+                            <span class="feat-icon">🗺️</span>
+                            <div>
+                                <div class="feat-title">실시간 1:1 길 찾기 배틀</div>
+                                <div class="feat-desc">친구와 방 코드를 공유하고 지도를 보며 먼저 목적지에 도착하세요.</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feat-icon">🗣️</span>
+                            <div>
+                                <div class="feat-title">방향 및 위치 영어 표현</div>
+                                <div class="feat-desc">Go straight, Turn left/right 등 핵심 길 안내 표현을 자연스럽게 훈련합니다.</div>
+                            </div>
+                        </div>
+                        <div class="feature-item">
+                            <span class="feat-icon">🏆</span>
+                            <div>
+                                <div class="feat-title">실시간 명예의 전당 등재</div>
+                                <div class="feat-desc">빠른 판단과 정확한 이동으로 높은 점수를 얻어 랭킹 1위에 도전하세요!</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 교사 모드 진입 링크 (Wordtyping 표준 하단 점선 아래 배치) -->
+                    <div class="teacher-link-wrap">
+                        <button type="button" class="btn-teacher-link" onclick="openTeacherAuthModal()">
+                            <i class="fas fa-cog"></i> 교사 설정 모드 (단원 목록 및 클라우드 DB 관리)
+                        </button>
+                    </div>
+                </div>
             </div>
-            
-            <div id="lobby-state-1" class="hidden">
-                <p id="welcome-msg" style="font-size:24px; font-weight:bold; color:#3498db; margin-bottom:20px;"></p>
-                <button id="btn-create" class="btn">새 게임 방 만들기 (Host)</button>
-                <div style="margin: 15px 0; color: #bdc3c7; font-weight: bold;">OR</div>
-                <input type="text" id="inp-room" placeholder="참여 코드 4자리 입력" maxlength="4" style="font-size: 24px; letter-spacing: 5px; font-weight: bold;">
-                <button id="btn-join" class="btn secondary">방 참여하기 (Join)</button>
+
+            <!-- [우측 50%]: 실시간 명예의 전당 (Top 30) -->
+            <div class="home-right">
+                <div class="where-card hall-of-fame-card flex flex-col h-full">
+                    <div class="hof-header">
+                        <div class="hof-title">
+                            <span style="font-size:1.3rem;">🏆</span>
+                            <span>명예의 전당</span>
+                            <span class="hof-live-badge"><span class="pulse-dot"></span> LIVE</span>
+                        </div>
+                        <div class="hof-subtitle">단원별·학급별 실시간 랭킹 순위표 (Top 30)</div>
+                    </div>
+
+                    <!-- 1. 기간 선택 탭 -->
+                <div class="flex bg-slate-100 p-1 rounded-xl mb-3">
+                    <button type="button" class="hof-period-tab flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-emerald-700 shadow-2xs" id="hof-tab-all" onclick="setHofPeriod('all')">전체 기간</button>
+                    <button type="button" class="hof-period-tab flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800" id="hof-tab-month" onclick="setHofPeriod('month')">이번 달</button>
+                    <button type="button" class="hof-period-tab flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800" id="hof-tab-week" onclick="setHofPeriod('week')">이번 주</button>
+                </div>
+
+                <!-- 2. 세부 필터 (학년, 반) -->
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <div>
+                        <select id="hof-filter-grade" onchange="filterHofList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="ALL">전체 학년</option>
+                            <option value="1">1학년</option>
+                            <option value="2">2학년</option>
+                            <option value="3">3학년</option>
+                            <option value="4">4학년</option>
+                            <option value="5">5학년</option>
+                            <option value="6">6학년</option>
+                        </select>
+                    </div>
+                    <div>
+                        <select id="hof-filter-class" onchange="filterHofList()" class="w-full p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-700 outline-none focus:ring-2 focus:ring-emerald-500">
+                            <option value="ALL">전체 반</option>
+                            <option value="1">1반</option><option value="2">2반</option>
+                            <option value="3">3반</option><option value="4">4반</option>
+                            <option value="5">5반</option><option value="6">6반</option>
+                            <option value="7">7반</option><option value="8">8반</option>
+                            <option value="9">9반</option><option value="10">10반</option>
+                            <option value="11">11반</option><option value="12">12반</option>
+                            <option value="13">13반</option><option value="14">14반</option>
+                            <option value="15">15반</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 3. 실시간 랭킹 목록 컨테이너 -->
+                <div id="hof-records-container" class="flex-1 overflow-y-auto custom-scrollbar max-h-[460px] space-y-2 pr-1">
+                    <div class="text-center py-16 text-slate-400 text-xs font-bold">
+                        <i class="fa-solid fa-spinner fa-spin text-emerald-600 text-base mb-2 block"></i>
+                        명예의 전당 기록을 불러오는 중입니다...
+                    </div>
+                </div>
+                </div>
             </div>
-            
-            <div id="lobby-state-2" class="hidden">
-                <h2>방 코드: <span id="display-room-code" style="color:#e74c3c; font-size:42px; letter-spacing: 3px;"></span></h2>
-                <p style="font-size: 18px;">상대방에게 이 코드를 알려주세요!</p>
-                <div style="margin: 30px; font-size: 22px; color: #3498db; font-weight: bold;">상대방을 기다리는 중... <i class="fa-solid fa-spinner fa-spin"></i></div>
+        </div>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- 2. 인게임 배틀 화면 (screen-game) -->
+        <!-- ─────────────────────────────────────────── -->
+        <div  class="hidden flex-col gap-3">
+            <div class="flex items-center justify-between bg-white px-4 py-2.5 rounded-2xl border border-slate-200 shadow-2xs">
+                <button type="button" onclick="confirmExitGame()" class="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition">
+                    <i class="fa-solid fa-arrow-left"></i>
+                    <span>홈으로 나가기</span>
+                </button>
+                <div class="flex items-center gap-3">
+                    <span class="text-xs font-bold text-slate-500">나의 역할: <strong id="my-role-badge" class="text-emerald-700">-</strong></span>
+                    <span class="text-xs font-bold text-slate-500">Room: <strong id="room-code-badge" class="text-amber-600">----</strong></span>
+                </div>
             </div>
-            <p id="sys-msg" style="color:#e74c3c; font-weight:bold; margin-top:15px; line-height: 1.4; font-size: 18px;"></p>
+
+            <div class="game-wrapper" id="gameWrapper">
+                <div class="game-scale-outer" id="gameScaleOuter">
+                    <div class="app-container" id="appContainer">
+                    <!-- Left Panel: P1 (Red) -->
+                    <div class="side-panel panel-a" id="panel-A">
+                        <div class="panel-header">
+                            <div class="player-info"><div class="avatar" style="border-color:#DC2626; color:#DC2626;">👦</div><span id="name-a">Player 1</span></div>
+                            <button class="clear-btn" id="btn-clear-a" onclick="handleClear()">Clear</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
+                            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
+                        </div>
+                        
+                        <!-- 어구 추가 블록 UI -->
+                        <div class="conclusion-box">
+                            <div class="select-group">
+                                <select id="sel-prep-a" class="sel-custom">
+                                    <option value="Turn left at">Turn left at</option>
+                                    <option value="Turn right at">Turn right at</option>
+                                    <option value="It's next to">It's next to</option>
+                                    <option value="It's across from">It's across from</option>
+                                </select>
+                                <span>the</span>
+                                <select id="sel-place-a" class="sel-custom"><!-- JS load --></select>
+                            </div>
+                            <button class="btn-cmd" id="btn-add-concl-a" style="background:#16A34A;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
+                        </div>
+
+                        <div class="cmd-list custom-scrollbar" id="cmd-list-a"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
+                        <button class="ready-btn" id="btn-ready-a" onclick="handleReady()">READY</button>
+                    </div>
+
+                    <!-- Center Panel: Map -->
+                    <div class="center-panel">
+                        <div class="top-info">
+                            <span>나의 역할: <span id="top-role-badge" class="text-amber-300">-</span></span>
+                            <span>Room Code: <span id="top-room-badge" class="room-code">----</span></span>
+                        </div>
+                        
+                        <div class="question-bar">
+                            <!-- 타이머 디스플레이 -->
+                            <div id="timer-display"></div>
+                            
+                            <h2 id="question-text">Waiting...</h2>
+                            <p id="question-sub">친구의 입장을 기다리고 있습니다.</p>
+                            <button class="tts-btn" onclick="speakQuestion()"><i class="fa-solid fa-volume-high"></i></button>
+                        </div>
+                        
+                        <div class="map-container" id="map">
+                            <!-- Map content drawn by JS -->
+                            <div class="marker marker-a" id="marker-a">
+                                <div class="dir-arrow" id="dir-a"></div>
+                                <div class="marker-name" id="marker-name-a"></div>
+                            </div>
+                            <div class="marker marker-b" id="marker-b">
+                                <div class="dir-arrow" id="dir-b"></div>
+                                <div class="marker-name" id="marker-name-b"></div>
+                            </div>
+                        </div>
+                        
+                        <div class="bottom-bar">
+                            <span class="score-info score-a" id="ui-score-a">P1: 0/0</span>
+                            <span id="ui-q-num" class="font-black text-slate-700 text-lg">Q 1 / 9</span>
+                            <span class="score-info score-b" id="ui-score-b">P2: 0/0</span>
+                        </div>
+
+                        <div id="ingame-msg">애니메이션 진행 중...</div>
+                    </div>
+
+                    <!-- Right Panel: P2 (Blue) -->
+                    <div class="side-panel panel-b" id="panel-B">
+                        <div class="panel-header">
+                            <div class="player-info"><div class="avatar" style="border-color:#2563EB; color:#2563EB;">👧</div><span id="name-b">Player 2</span></div>
+                            <button class="clear-btn" id="btn-clear-b" onclick="handleClear()">Clear</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
+                            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
+                            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
+                        </div>
+                        <div class="cmd-group">
+                            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
+                            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
+                        </div>
+                        
+                        <!-- 어구 추가 블록 UI -->
+                        <div class="conclusion-box">
+                            <div class="select-group">
+                                <select id="sel-prep-b" class="sel-custom">
+                                    <option value="Turn left at">Turn left at</option>
+                                    <option value="Turn right at">Turn right at</option>
+                                    <option value="It's next to">It's next to</option>
+                                    <option value="It's across from">It's across from</option>
+                                </select>
+                                <span>the</span>
+                                <select id="sel-place-b" class="sel-custom"><!-- JS load --></select>
+                            </div>
+                            <button class="btn-cmd" id="btn-add-concl-b" style="background:#16A34A;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
+                        </div>
+
+                        <div class="cmd-list custom-scrollbar" id="cmd-list-b"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
+                        <button class="ready-btn" id="btn-ready-b" onclick="handleReady()">READY</button>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- 3. 결과 화면 (screen-result) -->
+        <!-- ─────────────────────────────────────────── -->
+        <div id="screen-result" class="hidden max-w-md mx-auto w-full">
+            <div class="where-card text-center space-y-6 py-8">
+                <div class="text-5xl animate-bounce">🏆</div>
+                <div>
+                    <h2 class="text-2xl font-black text-slate-800 mb-1">길 찾기 배틀 종료!</h2>
+                    <p id="result-msg" class="text-base text-emerald-700 font-black"></p>
+                </div>
+
+                <!-- 라운드별 결과 목록 -->
+                <div class="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                    <h4 class="text-xs font-bold text-slate-500 mb-3 text-left">나의 라운드별 길 찾기 결과</h4>
+                    <div id="round-history-container" class="history-grid"></div>
+                </div>
+
+                <div class="flex gap-2">
+                    <button type="button" onclick="backToHome()" class="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow transition">
+                        홈 화면으로 돌아가기
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─────────────────────────────────────────── -->
+        <!-- 4. 교사 관리 화면 (screen-teacher) -->
+        <!-- ─────────────────────────────────────────── -->
+        <div id="screen-teacher" class="hidden max-w-4xl mx-auto w-full">
+            <div class="where-card space-y-5">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xl">⚙️</span>
+                        <h2 class="text-xl font-black text-slate-800">길 찾기 게임 교사 관리 모드</h2>
+                    </div>
+                    <button type="button" onclick="backToHome()" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 text-xs font-bold rounded-xl transition">
+                        닫기
+                    </button>
+                </div>
+
+                <!-- 교사 탭 네비게이션 -->
+                <div class="flex bg-slate-100 p-1 rounded-xl text-xs font-bold">
+                    <button type="button" id="t-tab-btn-settings" onclick="switchTeacherTab('settings')" class="flex-1 py-2 rounded-lg bg-white text-emerald-700 shadow-2xs">
+                        게임 환경 설정
+                    </button>
+                    <button type="button" id="t-tab-btn-records" onclick="switchTeacherTab('records')" class="flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800">
+                        학생 데이터 관리
+                    </button>
+                </div>
+
+                <!-- 탭 1: 설정 -->
+                <div id="teacher-tab-settings" class="space-y-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                            <label class="block text-xs font-black text-slate-700">문제당 제한시간 (초)</label>
+                            <input type="number" id="cfg-time" min="0" max="300" placeholder="예: 60 (0 입력시 무제한)" class="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                            <p class="text-[10px] text-slate-400">0을 입력하면 제한시간 없이 자유롭게 조작합니다.</p>
+                        </div>
+                        <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                            <label class="block text-xs font-black text-slate-700">총 라운드 수 (최대 9문제)</label>
+                            <input type="number" id="cfg-rounds" min="1" max="9" placeholder="예: 5" class="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                        </div>
+                    </div>
+                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                        <label class="block text-xs font-black text-slate-700">교사 비밀번호 변경</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="cfg-pw" placeholder="새 관리자 비밀번호" class="flex-1 p-2 bg-white border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                            <button type="button" onclick="saveConfig()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold shadow-2xs transition">
+                                설정 저장
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 탭 2: 데이터 관리 -->
+                <div id="teacher-tab-records" class="hidden space-y-3">
+                    <div class="flex gap-2">
+                        <select id="t-filter-grade" class="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                            <option value="">전체 학년</option>
+                            <option value="1">1학년</option><option value="2">2학년</option>
+                            <option value="3">3학년</option><option value="4">4학년</option>
+                            <option value="5">5학년</option><option value="6">6학년</option>
+                        </select>
+                        <select id="t-filter-class" class="p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-700">
+                            <option value="">전체 반</option>
+                            <option value="1">1반</option><option value="2">2반</option>
+                            <option value="3">3반</option><option value="4">4반</option>
+                            <option value="5">5반</option><option value="6">6반</option>
+                            <option value="7">7반</option><option value="8">8반</option>
+                            <option value="9">9반</option><option value="10">10반</option>
+                            <option value="11">11반</option><option value="12">12반</option>
+                        </select>
+                        <button type="button" onclick="loadTeacherRecords()" class="px-4 py-2 bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-2xs">
+                            조회
+                        </button>
+                    </div>
+                    <div class="max-h-[360px] overflow-y-auto custom-scrollbar border border-slate-200 rounded-xl">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0">
+                                <tr>
+                                    <th class="p-2.5">소속</th>
+                                    <th class="p-2.5">이름</th>
+                                    <th class="p-2.5">결과</th>
+                                    <th class="p-2.5">점수</th>
+                                    <th class="p-2.5 text-center">관리</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teacher-records-body" class="divide-y divide-slate-100 font-medium">
+                                <tr><td colspan="5" class="p-4 text-center text-slate-400">데이터를 조회해주세요.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- 모달: 교사 인증 모달 -->
+    <div id="modal-teacher-auth" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+        <div class="bg-white max-w-xs w-full p-5 rounded-2xl shadow-xl space-y-4">
+            <div class="flex items-center gap-2">
+                <span class="text-xl">🔒</span>
+                <h3 class="text-base font-black text-slate-800">교사 인증</h3>
+            </div>
+            <p class="text-xs text-slate-500 font-medium">교사 전용 비밀번호를 입력해주세요.</p>
+            <input type="password" id="teacherPwInput" placeholder="비밀번호 입력" class="w-full p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl text-xs font-bold outline-none focus:ring-2 focus:ring-emerald-500">
+            <div class="flex gap-2">
+                <button type="button" onclick="closeTeacherAuthModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs rounded-xl transition">취소</button>
+                <button type="button" onclick="verifyTeacher()" class="flex-1 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-xl transition">확인</button>
+            </div>
         </div>
     </div>
 
-    <!-- 명예의 전당 오버레이 (메인화면용) - 이름 제외 -->
-    <div id="hof-overlay" class="overlay hidden">
-        <div class="setup-box" style="width: 650px; height: 80%; display:flex; flex-direction:column; border-color: #f39c12;">
-            <h1 style="font-size: 42px; color:#f39c12;">🏆 명예의 전당</h1>
-            <div style="overflow-y:auto; flex-grow:1; border:2px solid #eee; border-radius:10px; margin-bottom: 20px;">
-                <table class="leaderboard-table">
-                    <thead style="background:#fcf3cf; color:#d35400;"><tr><th>순위</th><th>소속</th><th>점수</th></tr></thead>
-                    <tbody id="main-hof-body"><tr><td colspan="3">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr></tbody>
-                </table>
-            </div>
-            <button class="btn secondary" style="background:#f39c12;" onclick="document.getElementById('hof-overlay').classList.add('hidden');">닫기</button>
-        </div>
-    </div>
+    <!-- 하단 저작권 푸터 -->
+    <footer class="py-4 text-center text-[11px] text-slate-400 font-medium border-t border-slate-100">
+        만든이: 곽현석(이의초등학교) • Copyright &copy; 2026 Eui Elementary School. All Rights Reserved.
+    </footer>
 
-    <!-- 1.5. 교사 모드 로그인 오버레이 -->
-    <div id="teacher-login-overlay" class="overlay hidden">
-        <div class="setup-box" style="width: 400px; border-color: #9b59b6;">
-            <h2 style="color:#8e44ad; font-family:'Jua', sans-serif;">교사 모드 접속</h2>
-            <p style="font-family:'Jua', sans-serif; color:#666;">비밀번호를 입력하세요.</p>
-            <input type="password" id="inp-teacher-pw" placeholder="비밀번호" style="border-color:#9b59b6;">
-            <button class="btn secondary" onclick="checkTeacherPw()">확인</button>
-            <button class="btn" style="background:#bdc3c7;" onclick="closeTeacherLogin()">닫기</button>
-        </div>
-    </div>
+    <!-- Firebase SDK & 메인 게임 스크립트 -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc, query, orderBy, limit } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <!-- 1.6. 교사 대시보드 오버레이 (관리 목적이므로 이름 유지) -->
-    <div id="teacher-dashboard-overlay" class="overlay hidden">
-        <div class="setup-box" style="width: 900px; height: 90%; display:flex; flex-direction:column; border-color: #9b59b6;">
-            <h2 style="color:#8e44ad; font-family:'Jua', sans-serif; margin-bottom:20px;">교사 관리 대시보드</h2>
-            
-            <div style="display:flex; gap:10px; margin-bottom: 20px;">
-                <button class="btn secondary" id="tab-btn-settings" onclick="switchTeacherTab('settings')">게임 설정</button>
-                <button class="btn" style="background:#bdc3c7;" id="tab-btn-records" onclick="switchTeacherTab('records')">학생 데이터 관리</button>
-            </div>
-            
-            <!-- 설정 탭 -->
-            <div id="teacher-tab-settings" style="flex-grow:1; display:flex; flex-direction:column;">
-                <div class="teacher-form-group">
-                    <label><i class="fa-regular fa-clock"></i> 초 설정 (문제당 제한시간)</label>
-                    <input type="number" id="cfg-time" min="0" max="300" placeholder="예: 60 (0 입력시 무제한)">
-                    <p style="font-size:14px; color:#888; margin-top:-10px;">0을 입력하면 타이머가 작동하지 않습니다.</p>
-                </div>
-                <div class="teacher-form-group">
-                    <label><i class="fa-solid fa-list-ol"></i> 총 문제 수 (최대 9문제)</label>
-                    <input type="number" id="cfg-rounds" min="1" max="9" placeholder="예: 5">
-                </div>
-                <div class="teacher-form-group">
-                    <label><i class="fa-solid fa-key"></i> 교사 모드 비밀번호 변경</label>
-                    <input type="text" id="cfg-pw" placeholder="새 비밀번호">
-                </div>
-                <div style="flex-grow:1;"></div>
-                <button class="btn" style="background:#27ae60; box-shadow:0 4px 0 #2ecc71;" onclick="saveConfig()">설정 저장</button>
-            </div>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCAR_dSA_jViVY0RZAI3s41a39u9NufFj8",
+            authDomain: "where-2599e.firebaseapp.com",
+            projectId: "where-2599e",
+            storageBucket: "where-2599e.firebasestorage.app",
+            messagingSenderId: "1090101095033",
+            appId: "1:1090101095033:web:b80a7311d8dff569b842a8"
+        };
 
-            <!-- 기록 탭 -->
-            <div id="teacher-tab-records" class="hidden" style="flex-grow:1; display:flex; flex-direction:column; overflow:hidden;">
-                <div style="display:flex; gap:10px; margin-bottom:10px;">
-                    <select id="filter-grade" class="lobby-select" style="margin-bottom:0;"><option value="">전체 학년</option><option value="1">1학년</option><option value="2">2학년</option><option value="3">3학년</option><option value="4">4학년</option><option value="5">5학년</option><option value="6">6학년</option></select>
-                    <select id="filter-class" class="lobby-select" style="margin-bottom:0;"><option value="">전체 반</option><option value="1">1반</option><option value="2">2반</option><option value="3">3반</option><option value="4">4반</option><option value="5">5반</option><option value="6">6반</option><option value="7">7반</option><option value="8">8반</option><option value="9">9반</option><option value="10">10반</option><option value="11">11반</option><option value="12">12반</option></select>
-                    <button class="btn secondary" style="width:120px; margin-bottom:0;" onclick="loadTeacherRecords()"><i class="fa-solid fa-magnifying-glass"></i> 조회</button>
-                </div>
-                <div style="overflow-y:auto; flex-grow:1; border:2px solid #eee; border-radius:10px;">
-                    <table class="leaderboard-table">
-                        <thead><tr><th>소속</th><th>이름</th><th>결과</th><th>점수</th><th>관리</th></tr></thead>
-                        <tbody id="teacher-records-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-            <button class="btn" style="background:#bdc3c7; margin-top:20px;" onclick="closeTeacherDashboard()">대시보드 닫기</button>
-        </div>
-    </div>
-
-    <!-- 2. 결과 오버레이 (학생용 - 라운드 히스토리 표시) -->
-    <div id="result-overlay" class="overlay hidden">
-        <div class="setup-box" style="width: 650px;">
-            <h1 style="font-size: 56px; color:#e74c3c;">🏆 게임 종료!</h1>
-            <p id="result-msg" style="font-size:32px; color:#e74c3c; margin-bottom: 20px; font-weight: bold;"></p>
-            
-            <h3 style="color:#555; text-align:left; font-family:'Jua';">나의 라운드별 결과</h3>
-            <div id="round-history-container" class="history-grid"></div>
-
-            <button onclick="location.reload()" class="btn secondary" style="margin-top:30px;">초기 화면으로 돌아가기</button>
-        </div>
-    </div>
-
-    <!-- 메인 게임 영역 -->
-    
-    <!-- Left Panel: P1 (Red) -->
-    <div class="side-panel panel-a" id="panel-A">
-        <div class="panel-header">
-            <div class="player-info"><div class="avatar" style="border-color:#d32f2f; color:#d32f2f;">👦</div><span id="name-a">Player 1</span></div>
-            <button class="clear-btn" id="btn-clear-a" onclick="handleClear()">Clear</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
-            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
-        </div>
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
         
-        <!-- 어구 추가 블록 UI -->
-        <div class="conclusion-box">
-            <div class="select-group">
-                <select id="sel-prep-a" class="sel-custom">
-                    <option value="Turn left at">Turn left at</option>
-                    <option value="Turn right at">Turn right at</option>
-                    <option value="It's next to">It's next to</option>
-                    <option value="It's across from">It's across from</option>
-                </select>
-                <span>the</span>
-                <select id="sel-place-a" class="sel-custom"><!-- JS load --></select>
-            </div>
-            <button class="btn-cmd" id="btn-add-concl-a" style="background:#8bc34a; box-shadow:0 4px 0 #558b2f;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
-        </div>
+        const appId = 'find-the-place-multi';
+        let currentUser = null;
+        let myRole = null; 
+        let myRoomId = null;
+        let roomUnsubscribe = null;
+        let unsubscribeHof = null;
+        let hofAllScores = [];
+        let hofCurrentPeriod = 'all';
 
-        <div class="cmd-list" id="cmd-list-a"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
-        <button class="ready-btn" id="btn-ready-a" onclick="handleReady()">READY</button>
-    </div>
-
-    <!-- Center Panel: Map -->
-    <div class="center-panel">
-        <div class="top-info">
-            <span>나의 역할: <span id="my-role-badge" style="color:#f1c40f;">-</span></span>
-            <span>Room: <span id="room-code-badge" class="room-code">----</span></span>
-        </div>
+        let myName = "";
+        let myAffiliation = "";
+        let lastReadQuestionIndex = -1; 
         
-        <div class="question-bar">
-            <!-- 타이머 디스플레이 -->
-            <div id="timer-display"></div>
-            
-            <h2 id="question-text">Waiting...</h2>
-            <p id="question-sub">친구의 입장을 기다리고 있습니다.</p>
-            <button class="tts-btn" onclick="speakQuestion()"><i class="fa-solid fa-volume-high"></i></button>
-        </div>
-        
-        <div class="map-container" id="map">
-            <!-- Map content will be drawn by JS -->
-            <div class="marker marker-a" id="marker-a">
-                <div class="dir-arrow" id="dir-a"></div>
-                <div class="marker-name" id="marker-name-a"></div>
-            </div>
-            <div class="marker marker-b" id="marker-b">
-                <div class="dir-arrow" id="dir-b"></div>
-                <div class="marker-name" id="marker-name-b"></div>
-            </div>
-        </div>
-        
-        <div class="bottom-bar">
-            <span class="score-info score-a" id="ui-score-a">P1: 0/0</span>
-            <span id="ui-q-num" style="font-weight:900; color:#34495e; font-size:24px;">Q 1 / 9</span>
-            <span class="score-info score-b" id="ui-score-b">P2: 0/0</span>
-        </div>
+        let localPending = {}; 
+        let localDataCache = null;
 
-        <div id="ingame-msg">애니메이션 진행 중...</div>
-    </div>
+        // 교사 모드 게임 설정
+        let gameConfig = { adminPw: '1234', timeLimit: 0, totalRounds: 9 };
+        let timerInterval = null;
 
-    <!-- Right Panel: P2 (Blue) -->
-    <div class="side-panel panel-b" id="panel-B">
-        <div class="panel-header">
-            <div class="player-info"><div class="avatar" style="border-color:#1976d2; color:#1976d2;">👧</div><span id="name-b">Player 2</span></div>
-            <button class="clear-btn" id="btn-clear-b" onclick="handleClear()">Clear</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Go straight')">Go straight</button>
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn left')">Turn left</button>
-            <button class="btn-cmd btn-dir" onclick="handleCmd('dir', 'Turn right')">Turn right</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 1)">1</button>
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 2)">2</button>
-            <button class="btn-cmd btn-num" onclick="handleCmd('num', 3)">3</button>
-        </div>
-        <div class="cmd-group">
-            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'block')">block</button>
-            <button class="btn-cmd btn-unit" onclick="handleCmd('unit', 'blocks')">blocks</button>
-        </div>
-
-        <!-- 어구 추가 블록 UI -->
-        <div class="conclusion-box">
-            <div class="select-group">
-                <select id="sel-prep-b" class="sel-custom">
-                    <option value="Turn left at">Turn left at</option>
-                    <option value="Turn right at">Turn right at</option>
-                    <option value="It's next to">It's next to</option>
-                    <option value="It's across from">It's across from</option>
-                </select>
-                <span>the</span>
-                <select id="sel-place-b" class="sel-custom"><!-- JS load --></select>
-            </div>
-            <button class="btn-cmd" id="btn-add-concl-b" style="background:#8bc34a; box-shadow:0 4px 0 #558b2f;" onclick="handleCmd('conclusion', '')">문장 추가하기</button>
-        </div>
-
-        <div class="cmd-list" id="cmd-list-b"><div style="color:#aaa; text-align:center; margin-top:20px;">방향을 선택해 길을 안내하세요!</div></div>
-        <button class="ready-btn" id="btn-ready-b" onclick="handleReady()">READY</button>
-    </div>
-
-</div>
-
-<script type="module">
-    function resizeApp() {
-        const app = document.querySelector('.app-container');
-        const scaleX = window.innerWidth / 1280;
-        const scaleY = window.innerHeight / 720;
-        const scale = Math.min(scaleX, scaleY) * 0.95; 
-        if (scale < 1) app.style.transform = `scale(${scale})`;
-        else app.style.transform = 'scale(1)';
-    }
-    window.addEventListener('resize', resizeApp);
-    resizeApp();
-
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    const audioCtx = AudioContextClass ? new AudioContextClass() : null;
-    if(audioCtx) {
-        document.body.addEventListener('click', () => { if(audioCtx.state === 'suspended') audioCtx.resume(); }, { once: true });
-    }
-
-    function playSound(type) {
-        if(!audioCtx) return;
-        if(audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-        
-        if(type === 'success') {
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); 
-            osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.1); 
-            osc.frequency.setValueAtTime(783.99, audioCtx.currentTime + 0.2); 
-            osc.frequency.setValueAtTime(1046.50, audioCtx.currentTime + 0.3); 
-            gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.6);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.6);
-        } else {
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(300, audioCtx.currentTime);
-            osc.frequency.linearRampToValueAtTime(150, audioCtx.currentTime + 0.4);
-            gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-            osc.start();
-            osc.stop(audioCtx.currentTime + 0.4);
+        // 효과음 AudioContext
+        let audioCtx = null;
+        function playSound(type) {
+            try {
+                if(!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if(audioCtx.state === 'suspended') audioCtx.resume();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                if (type === 'success') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.3);
+                } else if (type === 'fail') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(220, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.4);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.4);
+                }
+            } catch(e) {}
         }
-    }
 
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, addDoc, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        // 4x3 Grid (3블록 구간)
+        const GRID_X = [80, 230, 380, 530]; 
+        const GRID_Y = [80, 210, 340];      
+        const DIRS = [[0,-1], [1,0], [0,1], [-1,0]]; 
+        const ARROWS = ['▲', '▶', '▼', '◀'];
 
-    const firebaseConfig = {
-        apiKey: "AIzaSyCAR_dSA_jViVY0RZAI3s41a39u9NufFj8",
-        authDomain: "where-2599e.firebaseapp.com",
-        projectId: "where-2599e",
-        storageBucket: "where-2599e.firebasestorage.app",
-        messagingSenderId: "1090101095033",
-        appId: "1:1090101095033:web:b80a7311d8dff569b842a8"
-    };
+        const QUAD = {
+            1: {dx: 45, dy: -41}, 
+            2: {dx: -45, dy: -41},
+            3: {dx: -45, dy: 41}, 
+            4: {dx: 45, dy: 41}   
+        };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-    
-    const appId = (typeof __app_id !== 'undefined' && __app_id) ? __app_id : 'find-the-place-multi';
-    let currentUser = null;
-    let myRole = null; 
-    let myRoomId = null;
-    let roomUnsubscribe = null;
-    let myName = "";
-    let myAffiliation = "";
-    let lastReadQuestionIndex = -1; 
-    
-    let localPending = {}; 
-    let localDataCache = null;
+        const PLACES = [
+            { id: 'Restaurant', name: 'Restaurant', icon: '🍔', x: 0, y: 0, q: 4 },
+            { id: 'Cafe', name: 'Cafe', icon: '☕', x: 1, y: 0, q: 3 },
+            { id: 'Bakery', name: 'Bakery', icon: '🥐', x: 0, y: 1, q: 1 },
+            { id: 'Market', name: 'Market', icon: '🛒', x: 1, y: 1, q: 2 },
 
-    // --- 교사 모드용 게임 설정 객체 ---
-    let gameConfig = { adminPw: '1234', timeLimit: 0, totalRounds: 9 };
-    let timerInterval = null;
+            { id: 'Bus stop', name: 'Bus stop', icon: '🚌', x: 1, y: 0, q: 4 },
+            { id: 'Police', name: 'Police', icon: '🚓', x: 2, y: 0, q: 3 },
+            { id: 'Post Office', name: 'Post Office', icon: '📮', x: 1, y: 1, q: 1 },
+            { id: 'Fire Station', name: 'Fire St.', icon: '🚒', x: 2, y: 1, q: 2 },
 
-    // --- 4x3 Grid (3블록 구간) ---
-    const GRID_X = [80, 230, 380, 530]; 
-    const GRID_Y = [80, 210, 340];      
-    const DIRS = [[0,-1], [1,0], [0,1], [-1,0]]; 
-    const ARROWS = ['▲', '▶', '▼', '◀'];
+            { id: 'Restroom', name: 'Restroom', icon: '🚻', x: 2, y: 0, q: 4 },
+            { id: 'Pet Shop', name: 'Pet Shop', icon: '🐶', x: 3, y: 0, q: 3 },
+            { id: 'Toy Store', name: 'Toy Store', icon: '🧸', x: 2, y: 1, q: 1 },
+            { id: 'Book Store', name: 'Book Store', icon: '📖', x: 3, y: 1, q: 2 },
 
-    const QUAD = {
-        1: {dx: 45, dy: -41}, 
-        2: {dx: -45, dy: -41},
-        3: {dx: -45, dy: 41}, 
-        4: {dx: 45, dy: 41}   
-    };
+            { id: 'Park', name: 'Park', icon: '🌳', x: 0, y: 1, q: 4 },
+            { id: 'Gym', name: 'Gym', icon: '🏋️', x: 1, y: 1, q: 3 },
+            { id: 'Cinema', name: 'Cinema', icon: '🍿', x: 0, y: 2, q: 1 },
+            { id: 'Museum', name: 'Museum', icon: '🏛️', x: 1, y: 2, q: 2 },
 
-    // 24개 건물 꽉 채우기
-    const PLACES = [
-        { id: 'Restaurant', name: 'Restaurant', icon: '🍔', x: 0, y: 0, q: 4 },
-        { id: 'Cafe', name: 'Cafe', icon: '☕', x: 1, y: 0, q: 3 },
-        { id: 'Bakery', name: 'Bakery', icon: '🥐', x: 0, y: 1, q: 1 },
-        { id: 'Market', name: 'Market', icon: '🛒', x: 1, y: 1, q: 2 },
+            { id: 'Hospital', name: 'Hospital', icon: '🏥', x: 1, y: 1, q: 4 },
+            { id: 'Pharmacy', name: 'Pharmacy', icon: '💊', x: 2, y: 1, q: 3 },
+            { id: 'House', name: 'House', icon: '🏠', x: 1, y: 2, q: 1 },
+            { id: 'Hotel', name: 'Hotel', icon: '🏨', x: 2, y: 2, q: 2 },
 
-        { id: 'Bus stop', name: 'Bus stop', icon: '🚌', x: 1, y: 0, q: 4 },
-        { id: 'Police', name: 'Police', icon: '🚓', x: 2, y: 0, q: 3 },
-        { id: 'Post Office', name: 'Post Office', icon: '📮', x: 1, y: 1, q: 1 },
-        { id: 'Fire Station', name: 'Fire St.', icon: '🚒', x: 2, y: 1, q: 2 },
+            { id: 'Bank', name: 'Bank', icon: '🏦', x: 2, y: 1, q: 4 },
+            { id: 'Library', name: 'Library', icon: '📚', x: 3, y: 1, q: 3 },
+            { id: 'Clothing', name: 'Clothing', icon: '👗', x: 2, y: 2, q: 1 },
+            { id: 'School', name: 'School', icon: '🏫', x: 3, y: 2, q: 2 }
+        ];
 
-        { id: 'Restroom', name: 'Restroom', icon: '🚻', x: 2, y: 0, q: 4 },
-        { id: 'Pet Shop', name: 'Pet Shop', icon: '🐶', x: 3, y: 0, q: 3 },
-        { id: 'Toy Store', name: 'Toy Store', icon: '🧸', x: 2, y: 1, q: 1 },
-        { id: 'Book Store', name: 'Book Store', icon: '📖', x: 3, y: 1, q: 2 },
+        const QUESTIONS = [
+            { target: 'School', sub: 'School(학교)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:2} },
+            { target: 'Bank', sub: 'Bank(은행)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:3, y:2, d:3} },
+            { target: 'Park', sub: 'Park(공원)은 어디에 있나요?', a_start: {x:1, y:2, d:0}, b_start: {x:2, y:0, d:2} },
+            { target: 'Library', sub: 'Library(도서관)는 어디에 있나요?', a_start: {x:2, y:2, d:0}, b_start: {x:1, y:0, d:1} },
+            { target: 'Hospital', sub: 'Hospital(병원)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:3} },
+            { target: 'Restaurant', sub: 'Restaurant(식당)은 어디에 있나요?', a_start: {x:2, y:1, d:3}, b_start: {x:1, y:2, d:0} },
+            { target: 'House', sub: 'House(집)는 어디에 있나요?', a_start: {x:0, y:1, d:1}, b_start: {x:3, y:2, d:3} },
+            { target: 'Restroom', sub: 'Restroom(화장실)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:2, y:2, d:0} },
+            { target: 'Bus stop', sub: 'Bus stop(버스 정류장)은 어디에 있나요?', a_start: {x:0, y:2, d:0}, b_start: {x:3, y:0, d:2} }
+        ];
 
-        { id: 'Park', name: 'Park', icon: '🌳', x: 0, y: 1, q: 4 },
-        { id: 'Gym', name: 'Gym', icon: '🏋️', x: 1, y: 1, q: 3 },
-        { id: 'Cinema', name: 'Cinema', icon: '🍿', x: 0, y: 2, q: 1 },
-        { id: 'Museum', name: 'Museum', icon: '🏛️', x: 1, y: 2, q: 2 },
+        // 이름 마스킹 통일 (홍O동, 김O, 남OO우)
+        function maskStudentName(nameStr) {
+            if (!nameStr) return '학생';
+            let str = String(nameStr).trim();
+            str = str.replace(/\*/g, 'O');
+            if (str.includes('선생님') || str.includes('관리자')) return str;
 
-        { id: 'Hospital', name: 'Hospital', icon: '🏥', x: 1, y: 1, q: 4 },
-        { id: 'Pharmacy', name: 'Pharmacy', icon: '💊', x: 2, y: 1, q: 3 },
-        { id: 'House', name: 'House', icon: '🏠', x: 1, y: 2, q: 1 },
-        { id: 'Hotel', name: 'Hotel', icon: '🏨', x: 2, y: 2, q: 2 },
-
-        { id: 'Bank', name: 'Bank', icon: '🏦', x: 2, y: 1, q: 4 },
-        { id: 'Library', name: 'Library', icon: '📚', x: 3, y: 1, q: 3 },
-        { id: 'Clothing', name: 'Clothing', icon: '👗', x: 2, y: 2, q: 1 },
-        { id: 'School', name: 'School', icon: '🏫', x: 3, y: 2, q: 2 }
-    ];
-
-    const QUESTIONS = [
-        { target: 'School', sub: 'School(학교)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:2} },
-        { target: 'Bank', sub: 'Bank(은행)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:3, y:2, d:3} },
-        { target: 'Park', sub: 'Park(공원)은 어디에 있나요?', a_start: {x:1, y:2, d:0}, b_start: {x:2, y:0, d:2} },
-        { target: 'Library', sub: 'Library(도서관)는 어디에 있나요?', a_start: {x:2, y:2, d:0}, b_start: {x:1, y:0, d:1} },
-        { target: 'Hospital', sub: 'Hospital(병원)은 어디에 있나요?', a_start: {x:0, y:2, d:1}, b_start: {x:3, y:0, d:3} },
-        { target: 'Restaurant', sub: 'Restaurant(식당)은 어디에 있나요?', a_start: {x:2, y:1, d:3}, b_start: {x:1, y:2, d:0} },
-        { target: 'House', sub: 'House(집)는 어디에 있나요?', a_start: {x:0, y:1, d:1}, b_start: {x:3, y:2, d:3} },
-        { target: 'Restroom', sub: 'Restroom(화장실)은 어디에 있나요?', a_start: {x:0, y:0, d:1}, b_start: {x:2, y:2, d:0} },
-        { target: 'Bus stop', sub: 'Bus stop(버스 정류장)은 어디에 있나요?', a_start: {x:0, y:2, d:0}, b_start: {x:3, y:0, d:2} }
-    ];
-
-    function sysMsg(msg) { document.getElementById('sys-msg').innerText = msg; }
-    function showMsg(msg) { 
-        const el = document.getElementById('ingame-msg');
-        el.innerHTML = msg; el.style.display = 'block';
-        setTimeout(() => el.style.display = 'none', 3500);
-    }
-
-    function drawMap() {
-        const map = document.getElementById('map');
-        const markerA = document.getElementById('marker-a');
-        const markerB = document.getElementById('marker-b');
-        
-        let html = '';
-        
-        for (let i = 0; i < GRID_X.length - 1; i++) {
-            for (let j = 0; j < GRID_Y.length - 1; j++) {
-                const bx = GRID_X[i] + 13 + 5; 
-                const by = GRID_Y[j] + 13 + 5;
-                const bw = (GRID_X[i+1] - 13 - 5) - bx;
-                const bh = (GRID_Y[j+1] - 13 - 5) - by;
-                html += `<div class="city-block" style="left:${bx}px; top:${by}px; width:${bw}px; height:${bh}px;"></div>`;
+            const parts = str.split(/\s+/);
+            if (parts.length > 1) {
+                const rawName = parts[parts.length - 1];
+                if (!rawName.endsWith('반') && !rawName.endsWith('번') && !rawName.endsWith('학년')) {
+                    const prefix = parts.slice(0, -1).join(' ');
+                    return prefix + ' ' + maskSingleName(rawName);
+                }
             }
+            return maskSingleName(str);
         }
 
-        GRID_Y.forEach(y => {
-            html += `<div class="road-h" style="top:${y-13}px;"></div><div class="dash-h" style="top:${y-2}px;"></div>`;
-        });
-        GRID_X.forEach(x => {
-            html += `<div class="road-v" style="left:${x-13}px;"></div><div class="dash-v" style="left:${x-2}px;"></div>`;
-        });
-        
-        GRID_Y.forEach(y => {
-            GRID_X.forEach(x => {
-                html += `<div class="road-center" style="left:${x-11}px; top:${y-11}px;"></div>`;
-            });
-        });
-        
-        PLACES.forEach(p => {
-            const px = GRID_X[p.x] + QUAD[p.q].dx;
-            const py = GRID_Y[p.y] + QUAD[p.q].dy;
-            html += `<div class="place" id="place-${p.id}" style="left:${px}px; top:${py}px;"><div class="emoji">${p.icon}</div><div class="name">${p.name}</div></div>`;
-        });
-        
-        map.innerHTML = html;
-        map.appendChild(markerA);
-        map.appendChild(markerB);
-
-        const sortedPlaces = [...PLACES].sort((a,b) => a.name.localeCompare(b.name));
-        const options = sortedPlaces.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
-        document.getElementById('sel-place-a').innerHTML = options;
-        document.getElementById('sel-place-b').innerHTML = options;
-    }
-    
-    drawMap();
-    
-    const initAuth = async () => {
-        try {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token).catch(() => signInAnonymously(auth));
-            } else {
-                await signInAnonymously(auth);
-            }
-        } catch (e) {
-            console.error("Auth Error:", e);
-            sysMsg("서버 인증 실패! Firebase 설정을 확인하세요.");
+        function maskSingleName(name) {
+            if (!name) return '';
+            const s = name.trim();
+            if (s.length <= 1) return s;
+            if (s.length === 2) return s[0] + 'O';
+            if (s.length === 3) return s[0] + 'O' + s[2];
+            return s[0] + 'O'.repeat(s.length - 2) + s[s.length - 1];
         }
-    };
-    initAuth();
 
-    onAuthStateChanged(auth, user => {
-        if(user) {
-            currentUser = user;
-            if(document.getElementById('sys-msg').innerText.includes("연결 중")) sysMsg("");
-            
-            // 교사 설정 데이터 실시간 동기화
-            const configRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
-            onSnapshot(configRef, snap => {
-                if(snap.exists()) {
-                    gameConfig = snap.data();
-                } else {
-                    setDoc(configRef, gameConfig).catch(console.error);
+        // GNB 프로필 연동
+        function getStudentInfo() {
+            let info = { grade: '', class: '', number: '', name: '학생' };
+            try {
+                const saved = localStorage.getItem('waurimal_student_profile');
+                if (saved) {
+                    const p = JSON.parse(saved);
+                    info = { ...info, ...p };
+                }
+            } catch(e) {}
+            return info;
+        }
+
+        function getEffectiveStudent() {
+            const p = getStudentInfo();
+            const sGrade = p.grade ? p.grade : '6';
+            const sClass = p.class ? p.class : '1';
+            const sNum = p.number ? p.number : '1';
+            const sName = p.name ? p.name : '학생';
+            const affiliation = `${sGrade}학년 ${sClass}반 ${sNum}번`;
+            return { name: sName, affiliation: affiliation, grade: sGrade, class: sClass, number: sNum };
+        }
+
+        // 반응형 게임 뷰포트 자동 스케일링 (가로 스크롤 100% 방지)
+        function resizeGameApp() {
+            const screenGame = document.getElementById('screen-game');
+            if (!screenGame || screenGame.classList.contains('hidden') || screenGame.style.display === 'none') return;
+
+            const outer = document.getElementById('gameScaleOuter');
+            const app = document.getElementById('appContainer');
+            if (!outer || !app) return;
+
+            const BASE_W = 1260;
+            const BASE_H = 720;
+
+            const availW = Math.max(320, window.innerWidth - 24);
+            const availH = Math.max(300, window.innerHeight - 130);
+
+            const scaleW = availW / BASE_W;
+            const scaleH = availH / BASE_H;
+            const scale = Math.min(scaleW, scaleH, 1);
+
+            app.style.transform = "scale(" + scale + ")";
+            app.style.transformOrigin = "top center";
+
+            outer.style.width = Math.floor(BASE_W * scale) + "px";
+            outer.style.height = Math.floor(BASE_H * scale) + "px";
+        }
+        window.addEventListener('resize', resizeGameApp);
+        window.addEventListener('orientationchange', () => setTimeout(resizeGameApp, 100));
+
+        // 확실한 화면 전환 유틸
+        window.showScreen = (screenId) => {
+            const screens = ['screen-home', 'screen-game', 'screen-result', 'screen-teacher'];
+            screens.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.classList.add('hidden');
+                    el.style.display = 'none';
                 }
             });
-        }
-    });
 
-    // --- 메인화면 명예의 전당 함수 (이름 제외) ---
-    window.openHOF = async () => {
-        document.getElementById('hof-overlay').classList.remove('hidden');
-        const tbody = document.getElementById('main-hof-body');
-        tbody.innerHTML = '<tr><td colspan="3">기록을 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
-        try {
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame'));
-            let records = [];
-            snap.forEach(doc => records.push(doc.data()));
-            records.sort((a,b) => b.score - a.score);
-            records = records.slice(0, 10);
+            const mainEl = document.getElementById('mainContainer');
+            if (mainEl) {
+                if (screenId === 'screen-game') {
+                    mainEl.className = 'flex-1 w-full mx-auto px-2 py-2 flex flex-col overflow-hidden';
+                } else {
+                    mainEl.className = 'flex-1 max-w-6xl w-full mx-auto px-4 py-4 md:py-6 flex flex-col';
+                }
+            }
+
+            const target = document.getElementById(screenId);
+            if (target) {
+                target.classList.remove('hidden');
+                if (screenId === 'screen-home') {
+                    target.style.display = 'grid';
+                } else {
+                    target.style.display = 'flex';
+                }
+            }
+
+            if (screenId === 'screen-game') {
+                setTimeout(resizeGameApp, 10);
+                requestAnimationFrame(resizeGameApp);
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        };
+
+        window.backToHome = () => {
+            if (roomUnsubscribe) {
+                roomUnsubscribe();
+                roomUnsubscribe = null;
+            }
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('boxWaitingRoom').classList.add('hidden');
+            window.showScreen('screen-home');
+            filterHofList();
+        };
+
+        window.confirmExitGame = () => {
+            if (confirm("게임을 중단하고 홈으로 나가시겠습니까?")) {
+                backToHome();
+            }
+        };
+
+        function setLobbyMsg(msg) {
+            const el = document.getElementById('homeLobbyMsg');
+            if (el) el.innerText = msg;
+        }
+
+        function showMsg(msg) { 
+            const el = document.getElementById('ingame-msg');
+            if (el) {
+                el.innerHTML = msg;
+                el.style.display = 'block';
+                setTimeout(() => el.style.display = 'none', 3500);
+            }
+        }
+
+        function drawMap() {
+            const map = document.getElementById('map');
+            const markerA = document.getElementById('marker-a');
+            const markerB = document.getElementById('marker-b');
+            if (!map) return;
             
-            if(records.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="3">등록된 기록이 없습니다.</td></tr>';
+            let html = '';
+            for (let i = 0; i < GRID_X.length - 1; i++) {
+                for (let j = 0; j < GRID_Y.length - 1; j++) {
+                    const bx = GRID_X[i] + 13 + 5; 
+                    const by = GRID_Y[j] + 13 + 5;
+                    const bw = (GRID_X[i+1] - 13 - 5) - bx;
+                    const bh = (GRID_Y[j+1] - 13 - 5) - by;
+                    html += `<div class="city-block" style="left:${bx}px; top:${by}px; width:${bw}px; height:${bh}px;"></div>`;
+                }
+            }
+
+            GRID_Y.forEach(y => {
+                html += `<div class="road-h" style="top:${y-13}px;"></div><div class="dash-h" style="top:${y-2}px;"></div>`;
+            });
+            GRID_X.forEach(x => {
+                html += `<div class="road-v" style="left:${x-13}px;"></div><div class="dash-v" style="left:${x-2}px;"></div>`;
+            });
+            
+            GRID_Y.forEach(y => {
+                GRID_X.forEach(x => {
+                    html += `<div class="road-center" style="left:${x-11}px; top:${y-11}px;"></div>`;
+                });
+            });
+            
+            PLACES.forEach(p => {
+                const px = GRID_X[p.x] + QUAD[p.q].dx;
+                const py = GRID_Y[p.y] + QUAD[p.q].dy;
+                html += `<div class="place" id="place-${p.id}" style="left:${px}px; top:${py}px;"><div class="emoji">${p.icon}</div><div class="name">${p.name}</div></div>`;
+            });
+            
+            map.innerHTML = html;
+            if (markerA) map.appendChild(markerA);
+            if (markerB) map.appendChild(markerB);
+
+            const sortedPlaces = [...PLACES].sort((a,b) => a.name.localeCompare(b.name));
+            const options = sortedPlaces.map(p => `<option value="${p.name}">${p.name}</option>`).join('');
+            const selA = document.getElementById('sel-place-a');
+            const selB = document.getElementById('sel-place-b');
+            if (selA) selA.innerHTML = options;
+            if (selB) selB.innerHTML = options;
+        }
+
+        // ════════════════════════════════════════════════════════════════════
+        // ── 1. 방 생성 및 참여 로직 ──
+        // ════════════════════════════════════════════════════════════════════
+        window.createGameRoom = async () => {
+            const student = getEffectiveStudent();
+            myName = student.name;
+            myAffiliation = student.affiliation;
+
+            myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
+            myRole = 'A';
+            setLobbyMsg("새로운 게임 방을 생성하고 있습니다...");
+
+            try {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+                const initialData = {
+                    currentQ: 0,
+                    state: 'waiting', 
+                    createdAt: Date.now(),
+                    pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start}, history: [] }
+                };
+
+                await setDoc(roomRef, initialData);
+                setLobbyMsg("");
+
+                // 대기 박스 표시
+                document.getElementById('waitingRoomCode').innerText = myRoomId;
+                document.getElementById('boxWaitingRoom').classList.remove('hidden');
+
+                listenRoom(roomRef);
+            } catch (e) {
+                console.error("Room create error:", e);
+                setLobbyMsg("방 생성에 실패했습니다. 다시 시도해주세요.");
+            }
+        };
+
+        window.cancelWaitingRoom = async () => {
+            if (myRoomId) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId));
+                } catch(e) {}
+            }
+            if (roomUnsubscribe) {
+                roomUnsubscribe();
+                roomUnsubscribe = null;
+            }
+            document.getElementById('boxWaitingRoom').classList.add('hidden');
+            setLobbyMsg("");
+        };
+
+        window.joinGameRoom = async () => {
+            const roomCode = document.getElementById('homeRoomInput').value.trim();
+            if (roomCode.length !== 4) {
+                setLobbyMsg("4자리 참여 코드를 정확히 입력해주세요.");
+                return;
+            }
+
+            const student = getEffectiveStudent();
+            myName = student.name;
+            myAffiliation = student.affiliation;
+
+            myRoomId = roomCode;
+            myRole = 'B';
+            setLobbyMsg("방에 접속하고 있습니다...");
+
+            try {
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+                const snapshot = await getDoc(roomRef);
+                
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.state !== 'waiting') {
+                        setLobbyMsg("이미 게임이 진행 중이거나 마감된 방입니다.");
+                        return;
+                    }
+                    
+                    const updatePayload = {
+                        pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start}, history: [] },
+                        state: 'playing',
+                        deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
+                    };
+                    
+                    await updateDoc(roomRef, updatePayload);
+                    setLobbyMsg("");
+                    listenRoom(roomRef);
+                } else {
+                    setLobbyMsg("입력하신 방 코드를 찾을 수 없습니다.");
+                }
+            } catch (e) {
+                console.error("Join room error:", e);
+                setLobbyMsg("방 접속 중 오류가 발생했습니다.");
+            }
+        };
+
+        function listenRoom(roomRef) {
+            document.getElementById('my-role-badge').innerText = myRole === 'A' ? "P1 (Red)" : "P2 (Blue)";
+            document.getElementById('room-code-badge').innerText = myRoomId;
+            document.getElementById('top-role-badge').innerText = myRole === 'A' ? "P1 (Red)" : "P2 (Blue)";
+            document.getElementById('top-room-badge').innerText = myRoomId;
+            
+            const oppRole = myRole === 'A' ? 'B' : 'A';
+            const oppPanel = document.getElementById(`panel-${oppRole}`);
+            if (oppPanel) {
+                oppPanel.style.opacity = '0.5';
+                oppPanel.style.pointerEvents = 'none';
+            }
+
+            if (roomUnsubscribe) roomUnsubscribe();
+
+            roomUnsubscribe = onSnapshot(roomRef, (snapshot) => {
+                if(!snapshot.exists()) return;
+                const data = snapshot.data();
+                localDataCache = data;
+                
+                if (data.state !== 'waiting') {
+                    // 확실한 화면 전환: 게임 화면 표시!
+                    window.showScreen('screen-game');
+                    document.getElementById('boxWaitingRoom').classList.add('hidden');
+                } else if(myRole === 'A') {
+                    // 아직 대기 상태
+                    document.getElementById('boxWaitingRoom').classList.remove('hidden');
+                }
+
+                updateUI(data);
+
+                if(data.state === 'animating' && !window.isAnimating) {
+                    runAnimations(data);
+                }
+                if(data.state === 'playing' && data.pA.ready && data.pB && data.pB.ready) {
+                    if(myRole === 'A') updateDoc(roomRef, { state: 'animating' }).catch(console.error);
+                }
+            }, (error) => {
+                console.error("Snapshot error:", error);
+                setLobbyMsg("서버와의 연결이 끊어졌습니다.");
+            });
+        }
+
+        window.speakQuestion = () => {
+            if (!window.speechSynthesis) return;
+            const text = document.getElementById('question-text').innerText;
+            if(speechSynthesis.speaking) speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = 'en-US'; 
+            u.rate = 0.9; 
+            speechSynthesis.speak(u);
+        };
+
+        function updateUI(data) {
+            document.getElementById('name-a').innerText = data.pA.name;
+            document.getElementById('marker-name-a').innerText = data.pA.name;
+            
+            if(data.pB) {
+                document.getElementById('name-b').innerText = data.pB.name;
+                document.getElementById('marker-name-b').innerText = data.pB.name;
+            }
+
+            const q = QUESTIONS[data.currentQ];
+            if(data.state === 'playing') {
+                document.getElementById('question-text').innerText = `Where is the ${q.target}?`;
+                document.getElementById('question-sub').innerText = q.sub;
+                document.getElementById('ui-q-num').innerText = `Q ${data.currentQ + 1} / ${gameConfig.totalRounds}`;
+                
+                document.querySelectorAll('.place').forEach(el => el.classList.remove('target'));
+                const targetPlace = document.getElementById(`place-${q.target}`);
+                if (targetPlace) targetPlace.classList.add('target');
+                
+                // 타이머
+                if (data.deadline) startTimer(data.deadline);
+                else clearInterval(timerInterval);
+                
+                if(!window.isAnimating) {
+                    if (myRole === 'A') {
+                        document.getElementById('marker-a').style.display = 'flex';
+                        document.getElementById('marker-b').style.display = 'none';
+                        renderMarker('a', data.pA.pos);
+                    } else if (myRole === 'B') {
+                        document.getElementById('marker-b').style.display = 'flex';
+                        document.getElementById('marker-a').style.display = 'none';
+                        renderMarker('b', data.pB.pos);
+                    }
+                }
+                updateMyButtons(data);
+
+                if(lastReadQuestionIndex !== data.currentQ && !window.isAnimating) {
+                    lastReadQuestionIndex = data.currentQ;
+                    setTimeout(() => { if(data.state === 'playing') speakQuestion(); }, 800); 
+                }
             } else {
-                // public HOF에서는 이름을 제외하고 순위, 소속, 점수만 표시
-                tbody.innerHTML = records.map((r, i) => `
-                    <tr><td>${i===0?'🥇':i===1?'🥈':i===2?'🥉':''}${i+1}위</td>
-                    <td>${r.affiliation}</td>
-                    <td style="color:#d32f2f; font-weight:bold;">${r.score}점</td></tr>
+                clearInterval(timerInterval);
+            }
+
+            document.getElementById('ui-score-a').innerText = `P1: ${data.pA.score}/${gameConfig.totalRounds}`;
+            document.getElementById('ui-score-b').innerText = `P2: ${data.pB ? data.pB.score : 0}/${gameConfig.totalRounds}`;
+
+            renderCmdList('A', data.pA.cmds);
+            if(data.pB) renderCmdList('B', data.pB.cmds);
+
+            document.getElementById('btn-ready-a').classList.toggle('active', data.pA.ready);
+            document.getElementById('btn-ready-b').classList.toggle('active', data.pB ? data.pB.ready : false);
+        }
+
+        function updateMyButtons(data) {
+            const myData = data[`p${myRole}`];
+            if(!myData) return;
+
+            const isReady = myData.ready;
+            const isPlaying = data.state === 'playing'; 
+            const isDisabled = isReady || !isPlaying; 
+
+            const panel = document.getElementById(`panel-${myRole}`);
+            if (!panel) return;
+            
+            panel.querySelectorAll('.btn-dir').forEach(b => b.disabled = isDisabled || localPending.dir);
+            panel.querySelectorAll('.btn-num').forEach(b => b.disabled = isDisabled || !localPending.dir || localPending.num);
+            panel.querySelectorAll('.btn-unit').forEach(b => b.disabled = isDisabled || !localPending.num);
+            
+            panel.querySelector(`#sel-prep-${myRole.toLowerCase()}`).disabled = isDisabled;
+            panel.querySelector(`#sel-place-${myRole.toLowerCase()}`).disabled = isDisabled;
+            panel.querySelector(`#btn-add-concl-${myRole.toLowerCase()}`).disabled = isDisabled || localPending.dir; 
+            
+            panel.querySelector('.clear-btn').disabled = isDisabled;
+            panel.querySelector('.ready-btn').innerText = isReady ? "WAITING..." : (isPlaying ? "READY GO!" : "대기 중...");
+            panel.querySelector('.ready-btn').disabled = isDisabled;
+        }
+
+        window.handleCmd = async (type, val) => {
+            if(!localDataCache || localDataCache.state !== 'playing') {
+                showMsg("지금은 버튼을 누를 수 없습니다.");
+                return;
+            }
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            const myKey = `p${myRole}`;
+            const myCmds = localDataCache[myKey].cmds;
+
+            let newCmd = null;
+
+            if(type === 'conclusion') {
+                const prep = document.getElementById(`sel-prep-${myRole.toLowerCase()}`).value;
+                const place = document.getElementById(`sel-place-${myRole.toLowerCase()}`).value;
+                newCmd = { str: `${prep} the ${place}.`, action: 'conclusion', dist: 0, prep: prep };
+                localPending = {}; 
+            }
+            else if(type === 'dir') {
+                if(val === 'Turn left' || val === 'Turn right') {
+                    newCmd = { str: `${val}.`, action: val, dist: 0 };
+                    localPending = {}; 
+                } else {
+                    localPending.dir = val; 
+                }
+            }
+            else if(type === 'num') localPending.num = val;
+            else if(type === 'unit') {
+                newCmd = { str: `${localPending.dir} ${localPending.num} ${val}.`, action: localPending.dir, dist: localPending.num };
+                localPending = {}; 
+            }
+
+            if(newCmd) {
+                await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] }).catch(console.error);
+            }
+            updateMyButtons(localDataCache);
+        };
+
+        window.handleClear = async () => {
+            if(!localDataCache || localDataCache.state !== 'playing') return;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            await updateDoc(roomRef, { [`p${myRole}.cmds`]: [] }).catch(console.error);
+            localPending = {};
+            updateMyButtons(localDataCache);
+        };
+
+        window.handleReady = async () => {
+            if(!localDataCache || localDataCache.state !== 'playing') return;
+            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+            const myKey = `p${myRole}`;
+            const isReady = localDataCache[myKey].ready;
+            await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
+        };
+
+        window.isAnimating = false;
+        const delay = ms => new Promise(res => setTimeout(res, ms));
+
+        async function runAnimations(data) {
+            window.isAnimating = true;
+            
+            document.getElementById('marker-a').style.display = 'flex';
+            if (data.pB) document.getElementById('marker-b').style.display = 'flex';
+            
+            showMsg("캐릭터가 이동합니다! 🏃‍♂️💨");
+            
+            let posA = {...data.pA.pos};
+            let posB = {...data.pB.pos};
+            
+            await Promise.all([
+                animatePath('a', posA, data.pA.cmds),
+                animatePath('b', posB, data.pB.cmds)
+            ]);
+
+            const targetId = QUESTIONS[data.currentQ].target;
+            const tObj = PLACES.find(p => p.id === targetId);
+            
+            let aWin = (posA.x === tObj.x && posA.y === tObj.y);
+            let bWin = (posB.x === tObj.x && posB.y === tObj.y);
+
+            let myWin = (myRole === 'A') ? aWin : bWin;
+            let oppWin = (myRole === 'A') ? bWin : aWin;
+
+            let aHistory = data.pA.history || [];
+            let bHistory = data.pB.history || [];
+            aHistory.push(aWin);
+            bHistory.push(bWin);
+
+            if (myWin) {
+                playSound('success');
+                if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, zIndex: 3000 });
+                if (oppWin) showMsg("두 명 모두 길 찾기에 성공했어요! 🎊");
+                else showMsg("목적지에 도착했습니다! ✨ 정답! ✨");
+            } else {
+                playSound('fail');
+                if (oppWin) showMsg("앗, 나는 실패했지만 상대방은 도착했어요! 😅");
+                else showMsg("목적지를 찾지 못했어요 😢");
+            }
+
+            await delay(3000); 
+
+            const nextQ = data.currentQ + 1;
+
+            if(myRole === 'A') {
+                let aScore = data.pA.score + (aWin ? 1 : 0);
+                let bScore = data.pB.score + (bWin ? 1 : 0);
+                const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+                
+                if(nextQ >= gameConfig.totalRounds) {
+                    await updateDoc(roomRef, {
+                        state: 'finished',
+                        'pA.score': aScore, 'pB.score': bScore,
+                        'pA.history': aHistory, 'pB.history': bHistory
+                    }).catch(console.error);
+                    finishGame(aScore, bScore, data.pA.name, data.pB.name, aHistory, bHistory);
+                } else {
+                    await updateDoc(roomRef, {
+                        state: 'playing', currentQ: nextQ,
+                        'pA.score': aScore, 'pB.score': bScore,
+                        'pA.history': aHistory, 'pB.history': bHistory,
+                        'pA.cmds': [], 'pB.cmds': [],
+                        'pA.ready': false, 'pB.ready': false,
+                        'pA.pos': {...QUESTIONS[nextQ].a_start},
+                        'pB.pos': {...QUESTIONS[nextQ].b_start},
+                        deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
+                    }).catch(console.error);
+                }
+            } else {
+                if(nextQ >= gameConfig.totalRounds) {
+                    finishGame(data.pA.score + (aWin?1:0), data.pB.score + (bWin?1:0), data.pA.name, data.pB.name, aHistory, bHistory);
+                }
+            }
+            window.isAnimating = false;
+            
+            if (localDataCache && localDataCache.state === 'playing') {
+                updateUI(localDataCache);
+            }
+        }
+
+        async function animatePath(markerId, pos, cmds) {
+            for(let cmd of cmds) {
+                if(cmd.action === 'conclusion') {
+                    showMsg(`💬 ${cmd.str}`);
+                    await delay(1000);
+                    
+                    if (cmd.prep === 'Turn left at') {
+                        pos.d = (pos.d + 3) % 4;
+                        renderMarker(markerId, pos);
+                        await delay(500);
+                    } else if (cmd.prep === 'Turn right at') {
+                        pos.d = (pos.d + 1) % 4;
+                        renderMarker(markerId, pos);
+                        await delay(500);
+                    }
+                    continue;
+                }
+
+                if(cmd.action === 'Turn left') pos.d = (pos.d + 3) % 4;
+                else if(cmd.action === 'Turn right') pos.d = (pos.d + 1) % 4;
+                
+                renderMarker(markerId, pos);
+                if(cmd.action.includes('Turn')) await delay(500); 
+                
+                for(let i=0; i<cmd.dist; i++) {
+                    let nx = pos.x + DIRS[pos.d][0];
+                    let ny = pos.y + DIRS[pos.d][1];
+                    if(nx >= 0 && nx < 4 && ny >= 0 && ny < 3) {
+                        pos.x = nx; pos.y = ny;
+                        renderMarker(markerId, pos);
+                        await delay(600);
+                    } else {
+                        break; 
+                    }
+                }
+            }
+        }
+
+        function renderMarker(id, pos) {
+            const el = document.getElementById(`marker-${id}`);
+            if (!el) return;
+            el.style.left = `${GRID_X[pos.x]}px`;
+            el.style.top = `${GRID_Y[pos.y]}px`;
+            el.querySelector('.dir-arrow').innerText = ARROWS[pos.d];
+        }
+
+        function renderCmdList(role, cmds) {
+            const list = document.getElementById(`cmd-list-${role.toLowerCase()}`);
+            if (!list) return;
+            if(!cmds || cmds.length === 0) list.innerHTML = `<div style="color:#aaa; text-align:center; margin-top:20px;">명령어를 만들어 길을 안내하세요!</div>`;
+            else {
+                list.innerHTML = cmds.map((c) => {
+                    let iconClass = 'arrow-up';
+                    if(c.action.includes('left')) iconClass = 'arrow-rotate-left';
+                    else if(c.action.includes('right')) iconClass = 'arrow-rotate-right';
+                    else if(c.action === 'conclusion') iconClass = 'location-dot';
+
+                    return `<div class="cmd-item">
+                        <i class="fa-solid fa-${iconClass}"></i> 
+                        ${c.str}
+                    </div>`;
+                }).join('');
+            }
+            list.scrollTop = list.scrollHeight;
+        }
+
+        function startTimer(deadline) {
+            clearInterval(timerInterval);
+            const timerEl = document.getElementById('timer-display');
+            
+            function tick() {
+                const now = Date.now();
+                const rem = Math.max(0, Math.ceil((deadline - now) / 1000));
+                timerEl.innerText = `⏱️ 남은 시간: ${rem}초`;
+                
+                if (rem <= 5) {
+                    timerEl.style.backgroundColor = '#B91C1C';
+                    timerEl.style.animation = 'pulse 0.5s infinite alternate';
+                } else {
+                    timerEl.style.backgroundColor = '#EF4444';
+                    timerEl.style.animation = 'none';
+                }
+
+                if (rem <= 0) {
+                    clearInterval(timerInterval);
+                    timerEl.innerText = "⏰ 시간 초과!";
+                    if (myRole === 'A' && localDataCache && localDataCache.state === 'playing') {
+                        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
+                        updateDoc(roomRef, { state: 'animating' }).catch(console.error);
+                    }
+                }
+            }
+            tick();
+            timerInterval = setInterval(tick, 1000);
+        }
+
+        async function finishGame(scoreA, scoreB, nameA, nameB, aHistory, bHistory) {
+            window.showScreen('screen-result');
+            if(roomUnsubscribe) {
+                roomUnsubscribe();
+                roomUnsubscribe = null;
+            }
+            
+            let isTie = scoreA === scoreB;
+            let myWin = (myRole === 'A' && scoreA > scoreB) || (myRole === 'B' && scoreB > scoreA);
+            
+            let winMsg = "";
+            if(isTie) {
+                winMsg = "아름다운 무승부! 🤝";
+            } else if(myWin) {
+                winMsg = `${myRole === 'A' ? nameA : nameB} 승리! 🏆`;
+            } else {
+                winMsg = "아쉽게 패배했습니다. 더 노력해 보세요! 😢";
+            }
+            document.getElementById('result-msg').innerText = winMsg;
+            
+            const myHistory = myRole === 'A' ? aHistory : bHistory;
+            const historyContainer = document.getElementById('round-history-container');
+            if(myHistory && historyContainer) {
+                historyContainer.innerHTML = myHistory.map((res, idx) => `
+                    <div class="history-item ${res ? 'correct' : 'incorrect'}">
+                        <div>Q${idx + 1}</div>
+                        <div>${res ? '✅ 도착' : '❌ 실패'}</div>
+                    </div>
                 `).join('');
             }
-        } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="3" style="color:red;">데이터 로딩 실패</td></tr>';
-        }
-    };
+            
+            if (myWin || isTie) {
+                if (typeof confetti === 'function') confetti({ particleCount: 300, spread: 120, origin: { y: 0.5 }, zIndex: 4000 });
+                playSound('success');
+            } else {
+                playSound('fail');
+            }
 
-    // --- 교사 모드 함수 ---
-    window.openTeacherLogin = () => {
-        document.getElementById('inp-teacher-pw').value = '';
-        document.getElementById('teacher-login-overlay').classList.remove('hidden');
-    };
-    window.closeTeacherLogin = () => {
-        document.getElementById('teacher-login-overlay').classList.add('hidden');
-    };
-    window.checkTeacherPw = () => {
-        if(document.getElementById('inp-teacher-pw').value === gameConfig.adminPw) {
-            closeTeacherLogin();
-            document.getElementById('teacher-dashboard-overlay').classList.remove('hidden');
-            switchTeacherTab('settings');
-            
-            document.getElementById('cfg-time').value = gameConfig.timeLimit;
-            document.getElementById('cfg-rounds').value = gameConfig.totalRounds;
-            document.getElementById('cfg-pw').value = gameConfig.adminPw;
-        } else {
-            alert("비밀번호가 틀렸습니다.");
+            try {
+                const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
+                if(myRole === 'A') {
+                    let resA = scoreA > scoreB ? '승리' : (scoreA < scoreB ? '패배' : '무승부');
+                    let resB = scoreB > scoreA ? '승리' : (scoreB < scoreA ? '패배' : '무승부');
+                    
+                    await addDoc(hofRef, { name: nameA, affiliation: localDataCache.pA.affiliation, score: scoreA, result: resA, ts: Date.now() });
+                    await addDoc(hofRef, { name: nameB, affiliation: localDataCache.pB.affiliation, score: scoreB, result: resB, ts: Date.now() });
+                }
+            } catch (e) {
+                console.error("Hall of Fame Error:", e);
+            }
         }
-    };
-    window.closeTeacherDashboard = () => {
-        document.getElementById('teacher-dashboard-overlay').classList.add('hidden');
-    };
-    window.switchTeacherTab = (tab) => {
-        document.getElementById('teacher-tab-settings').classList.add('hidden');
-        document.getElementById('teacher-tab-records').classList.add('hidden');
-        document.getElementById(`teacher-tab-${tab}`).classList.remove('hidden');
-        
-        document.getElementById('tab-btn-settings').classList.replace('btn', 'secondary');
-        document.getElementById('tab-btn-records').classList.replace('btn', 'secondary');
-        document.getElementById(`tab-btn-${tab}`).classList.replace('secondary', 'btn');
-        document.getElementById('tab-btn-settings').style.background = tab==='settings' ? '#9b59b6' : '#bdc3c7';
-        document.getElementById('tab-btn-records').style.background = tab==='records' ? '#9b59b6' : '#bdc3c7';
-        
-        if(tab === 'records') loadTeacherRecords();
-    };
-    window.saveConfig = async () => {
-        const t = parseInt(document.getElementById('cfg-time').value) || 0;
-        const r = parseInt(document.getElementById('cfg-rounds').value) || 9;
-        const p = document.getElementById('cfg-pw').value.trim() || '1234';
-        
-        await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config'), {
-            timeLimit: t, totalRounds: Math.min(Math.max(r, 1), 9), adminPw: p
-        });
-        alert("게임 설정이 저장되었습니다.");
-    };
-    window.loadTeacherRecords = async () => {
-        const tbody = document.getElementById('teacher-records-body');
-        tbody.innerHTML = '<tr><td colspan="5">데이터를 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
-        
-        const gFilter = document.getElementById('filter-grade').value;
-        const cFilter = document.getElementById('filter-class').value;
-        
-        try {
-            const snap = await getDocs(collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame'));
-            let html = '';
-            
-            let records = [];
-            snap.forEach(docSnap => records.push({ id: docSnap.id, ...docSnap.data() }));
-            records.sort((a,b) => b.ts - a.ts); // 최신순 정렬
-            
-            records.forEach(d => {
-                if(gFilter && !d.affiliation.includes(`${gFilter}학년`)) return;
-                if(cFilter && !d.affiliation.includes(`${cFilter}반`)) return;
-                
-                let resColor = d.result === '승리' ? '#3498db' : (d.result === '패배' ? '#e74c3c' : '#7f8c8d');
-                html += `<tr>
-                    <td>${d.affiliation}</td>
-                    <td style="font-weight:bold;">${d.name}</td>
-                    <td style="color:${resColor}; font-weight:900;">${d.result || '-'}</td>
-                    <td style="color:#d81b60; font-weight:bold;">${d.score}점</td>
-                    <td><button onclick="deleteRecord('${d.id}')" style="background:#e74c3c; color:white; border:none; padding:6px 12px; border-radius:6px; cursor:pointer; font-weight:bold;">삭제</button></td>
-                </tr>`;
+
+        // ════════════════════════════════════════════════════════════════════
+        // ── 2. 실시간 명예의 전당 (Top 30 + 홍O동 마스킹 + 기간 탭) ──
+        // ════════════════════════════════════════════════════════════════════
+        window.setHofPeriod = (period) => {
+            hofCurrentPeriod = period;
+            ['all', 'month', 'week'].forEach(p => {
+                const tab = document.getElementById('hof-tab-' + p);
+                if (tab) {
+                    if (p === period) {
+                        tab.className = "hof-period-tab flex-1 py-1.5 text-xs font-bold rounded-lg transition-all bg-white text-emerald-700 shadow-2xs";
+                    } else {
+                        tab.className = "hof-period-tab flex-1 py-1.5 text-xs font-bold rounded-lg transition-all text-slate-500 hover:text-slate-800";
+                    }
+                }
             });
-            
-            if(!html) html = '<tr><td colspan="5">조건에 맞는 학생 데이터가 없습니다.</td></tr>';
-            tbody.innerHTML = html;
-        } catch(e) {
-            tbody.innerHTML = '<tr><td colspan="5" style="color:red;">데이터 로딩 실패</td></tr>';
-        }
-    };
-    window.deleteRecord = async (id) => {
-        if(!confirm("해당 학생의 기록을 영구 삭제하시겠습니까?")) return;
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'hallOfFame', id));
-        loadTeacherRecords();
-    };
+            filterHofList();
+        };
 
-    // --- 타이머 기능 ---
-    function startTimer(deadline) {
-        clearInterval(timerInterval);
-        const display = document.getElementById('timer-display');
-        if(!deadline) {
-            display.innerText = '';
-            return;
+        function listenToHallOfFame() {
+            const q = query(collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame'), orderBy("score", "desc"), limit(300));
+            if (unsubscribeHof) unsubscribeHof();
+
+            unsubscribeHof = onSnapshot(q, (snap) => {
+                hofAllScores = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    let rawName = data.name || '학생';
+                    let cleanName = String(rawName).replace(/\*/g, 'O');
+
+                    let ts = data.ts;
+                    if (typeof ts === 'string') ts = parseInt(ts, 10);
+                    if (!ts) ts = Date.now();
+
+                    const affil = data.affiliation || '';
+                    const gMatch = affil.match(/(\d+)\s*학년/);
+                    const cMatch = affil.match(/(\d+)\s*반/);
+                    const sGrade = gMatch ? gMatch[1] : '';
+                    const sClass = cMatch ? cMatch[1] : '';
+
+                    hofAllScores.push({
+                        id: d.id,
+                        name: rawName,
+                        maskedName: maskStudentName(cleanName),
+                        affiliation: affil,
+                        grade: sGrade,
+                        classNum: sClass,
+                        score: parseInt(data.score, 10) || 0,
+                        result: data.result || '완료',
+                        timestamp: ts
+                    });
+                });
+                filterHofList();
+            }, (err) => {
+                console.error("HOF error:", err);
+                filterHofList();
+            });
         }
-        
-        timerInterval = setInterval(() => {
-            let remain = Math.floor((deadline - Date.now()) / 1000);
-            if(remain <= 0) {
-                remain = 0;
-                clearInterval(timerInterval);
-                display.innerText = `⏳ 시간 종료!`;
-                if(myRole === 'A' && localDataCache.state === 'playing') {
-                    // 시간 종료 시 호스트가 강제 애니메이션 진행
-                    updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId), { state: 'animating' }).catch(console.error);
+
+        window.filterHofList = () => {
+            const container = document.getElementById('hof-records-container');
+            if (!container) return;
+
+            const g = document.getElementById('hof-filter-grade') ? document.getElementById('hof-filter-grade').value : 'ALL';
+            const c = document.getElementById('hof-filter-class') ? document.getElementById('hof-filter-class').value : 'ALL';
+
+            const now = new Date();
+            const curYear = now.getFullYear();
+            const curMonth = now.getMonth();
+            const oneWeekAgoMs = now.getTime() - 7 * 24 * 60 * 60 * 1000;
+
+            let filtered = hofAllScores.filter(item => {
+                if (g !== 'ALL' && item.grade !== g) return false;
+                if (c !== 'ALL' && item.classNum !== c) return false;
+
+                if (hofCurrentPeriod !== 'all' && item.timestamp) {
+                    const t = new Date(item.timestamp);
+                    if (hofCurrentPeriod === 'month') {
+                        if (t.getFullYear() !== curYear || t.getMonth() !== curMonth) return false;
+                    } else if (hofCurrentPeriod === 'week') {
+                        if (t.getTime() < oneWeekAgoMs) return false;
+                    }
                 }
-            } else {
-                display.innerText = `⏳ 남은 시간: ${remain}초`;
-            }
-        }, 1000);
-    }
+                return true;
+            });
 
-    // --- 메인 게임 로직 ---
-    document.getElementById('btn-next-step').onclick = () => {
-        const g = document.getElementById('inp-grade').value;
-        const c = document.getElementById('inp-class').value;
-        const n = document.getElementById('inp-num').value.trim();
-        const name = document.getElementById('inp-name').value.trim();
-
-        if(!g || !c || !n || !name) return sysMsg("학년, 반, 번호, 이름을 모두 선택/입력해주세요!");
-
-        myName = name;
-        myAffiliation = `${g}학년 ${c}반 ${n}번`;
-        
-        document.getElementById('welcome-msg').innerText = `환영합니다, ${myName}님!`;
-        document.getElementById('lobby-state-0').classList.add('hidden');
-        document.getElementById('lobby-state-1').classList.remove('hidden');
-        sysMsg(""); 
-    };
-
-    const fetchWithTimeout = (promise, ms) => {
-        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error("시간 초과")), ms));
-        return Promise.race([promise, timeout]);
-    };
-
-    document.getElementById('btn-create').onclick = async () => {
-        if(!currentUser) return sysMsg("서버 연결 대기 중입니다...");
-        try {
-            document.getElementById('btn-create').disabled = true;
-            sysMsg("방을 생성하는 중입니다...");
-
-            myRole = 'A';
-            myRoomId = Math.floor(1000 + Math.random() * 9000).toString();
-            
-            const roomData = {
-                state: 'waiting',
-                currentQ: 0,
-                pA: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].a_start}, history: [] },
-                pB: null
-            };
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-            await fetchWithTimeout(setDoc(roomRef, roomData), 8000);
-
-            document.getElementById('lobby-state-1').classList.add('hidden');
-            document.getElementById('lobby-state-2').classList.remove('hidden');
-            document.getElementById('display-room-code').innerText = myRoomId;
-            
-            listenRoom(roomRef);
-            sysMsg("");
-        } catch (e) {
-            sysMsg(`⚠️ 방 생성 실패. Firestore 데이터베이스 설정을 확인하세요.`);
-        } finally {
-            document.getElementById('btn-create').disabled = false;
-        }
-    };
-
-    document.getElementById('btn-join').onclick = async () => {
-        if(!currentUser) return sysMsg("서버 연결 대기 중입니다...");
-        const code = document.getElementById('inp-room').value.trim();
-        if(!code) return sysMsg("참여 코드를 입력하세요!");
-
-        try {
-            document.getElementById('btn-join').disabled = true;
-            sysMsg("방에 접속하는 중입니다...");
-
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', code);
-            const docSnap = await fetchWithTimeout(getDoc(roomRef), 8000);
-            
-            if(docSnap.exists()) {
-                const data = docSnap.data();
-                if(data.pB !== null) {
-                    document.getElementById('btn-join').disabled = false;
-                    return sysMsg("이미 게임이 진행중인 꽉 찬 방입니다.");
+            // 1인 1최고점수
+            const uniqueMap = new Map();
+            filtered.forEach(item => {
+                const key = item.name + '_' + item.affiliation;
+                if (!uniqueMap.has(key) || uniqueMap.get(key).score < item.score) {
+                    uniqueMap.set(key, item);
                 }
-                
-                myRole = 'B';
-                myRoomId = code;
-                
-                // P2가 들어오면 playing으로 변경하며 첫 문제 타이머 설정
-                const updatePayload = {
-                    pB: { name: myName, affiliation: myAffiliation, score: 0, cmds: [], ready: false, pos: {...QUESTIONS[0].b_start}, history: [] },
-                    state: 'playing',
-                    deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
-                };
-                
-                await updateDoc(roomRef, updatePayload);
-                sysMsg("");
-                listenRoom(roomRef);
-            } else {
-                sysMsg("입력하신 방 코드를 찾을 수 없습니다.");
-            }
-        } catch (e) {
-            sysMsg(`⚠️ 접속 실패. 호스트 환경이 정상인지 확인해주세요.`);
-        } finally {
-            document.getElementById('btn-join').disabled = false;
-        }
-    };
+            });
+            const displayList = Array.from(uniqueMap.values()).sort((a,b) => b.score - a.score).slice(0, 30);
 
-    function listenRoom(roomRef) {
-        document.getElementById('lobby-overlay').classList.add('hidden');
-        document.getElementById('my-role-badge').innerText = myRole === 'A' ? "P1 (Red)" : "P2 (Blue)";
-        document.getElementById('room-code-badge').innerText = myRoomId;
-        
-        const oppRole = myRole === 'A' ? 'B' : 'A';
-        const oppPanel = document.getElementById(`panel-${oppRole}`);
-        oppPanel.style.opacity = '0.5';
-        oppPanel.style.pointerEvents = 'none';
-
-        roomUnsubscribe = onSnapshot(roomRef, (snapshot) => {
-            if(!snapshot.exists()) return;
-            const data = snapshot.data();
-            localDataCache = data;
-            
-            if (data.state !== 'waiting') {
-                document.getElementById('lobby-overlay').classList.add('hidden');
-            } else if(myRole === 'A') {
-                document.getElementById('lobby-overlay').classList.remove('hidden');
-                document.getElementById('lobby-state-main').classList.add('hidden');
-                document.getElementById('lobby-state-0').classList.add('hidden');
-                document.getElementById('lobby-state-1').classList.add('hidden');
-                document.getElementById('lobby-state-2').classList.remove('hidden');
+            if (displayList.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-16 text-slate-400 text-xs font-bold">
+                        선택한 조건에 해당하는 명예의 전당 기록이 없습니다.<br>
+                        친구와 함께 1:1 길 찾기 배틀을 즐기고 첫 랭킹에 도전해보세요!
+                    </div>
+                `;
+                return;
             }
 
-            updateUI(data);
+            container.innerHTML = displayList.map((item, index) => {
+                const rank = index + 1;
+                let rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 font-black text-xs">${rank}</span>`;
+                if (rank === 1) rankBadge = '<span class="text-xl">🥇</span>';
+                else if (rank === 2) rankBadge = '<span class="text-xl">🥈</span>';
+                else if (rank === 3) rankBadge = '<span class="text-xl">🥉</span>';
 
-            if(data.state === 'animating' && !window.isAnimating) {
-                runAnimations(data);
-            }
-            if(data.state === 'playing' && data.pA.ready && data.pB && data.pB.ready) {
-                if(myRole === 'A') updateDoc(roomRef, { state: 'animating' }).catch(console.error);
-            }
-        }, (error) => {
-            console.error("Snapshot error:", error);
-            sysMsg("서버와의 연결이 끊어졌습니다.");
-        });
-    }
+                let resColor = 'bg-slate-100 text-slate-600';
+                if (item.result === '승리') resColor = 'bg-emerald-100 text-emerald-800';
+                else if (item.result === '무승부') resColor = 'bg-amber-100 text-amber-800';
 
-    window.speakQuestion = () => {
-        if (!window.speechSynthesis) return;
-        const text = document.getElementById('question-text').innerText;
-        if(speechSynthesis.speaking) speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = 'en-US'; 
-        u.rate = 0.9; 
-        speechSynthesis.speak(u);
-    };
-
-    function updateUI(data) {
-        document.getElementById('name-a').innerText = data.pA.name;
-        document.getElementById('marker-name-a').innerText = data.pA.name;
-        
-        if(data.pB) {
-            document.getElementById('name-b').innerText = data.pB.name;
-            document.getElementById('marker-name-b').innerText = data.pB.name;
-        }
-
-        const q = QUESTIONS[data.currentQ];
-        if(data.state === 'playing') {
-            document.getElementById('question-text').innerText = `Where is the ${q.target}?`;
-            document.getElementById('question-sub').innerText = q.sub;
-            document.getElementById('ui-q-num').innerText = `Q ${data.currentQ + 1} / ${gameConfig.totalRounds}`;
-            
-            document.querySelectorAll('.place').forEach(el => el.classList.remove('target'));
-            document.getElementById(`place-${q.target}`).classList.add('target');
-            
-            // 타이머 업데이트
-            if (data.deadline) startTimer(data.deadline);
-            else clearInterval(timerInterval);
-            
-            if(!window.isAnimating) {
-                if (myRole === 'A') {
-                    document.getElementById('marker-a').style.display = 'flex';
-                    document.getElementById('marker-b').style.display = 'none';
-                    renderMarker('a', data.pA.pos);
-                } else if (myRole === 'B') {
-                    document.getElementById('marker-b').style.display = 'flex';
-                    document.getElementById('marker-a').style.display = 'none';
-                    renderMarker('b', data.pB.pos);
-                }
-            }
-            updateMyButtons(data);
-
-            if(lastReadQuestionIndex !== data.currentQ && !window.isAnimating) {
-                lastReadQuestionIndex = data.currentQ;
-                setTimeout(() => { if(data.state === 'playing') speakQuestion(); }, 800); 
-            }
-        } else {
-            clearInterval(timerInterval);
-        }
-
-        document.getElementById('ui-score-a').innerText = `P1: ${data.pA.score}/${gameConfig.totalRounds}`;
-        document.getElementById('ui-score-b').innerText = `P2: ${data.pB ? data.pB.score : 0}/${gameConfig.totalRounds}`;
-
-        renderCmdList('A', data.pA.cmds);
-        if(data.pB) renderCmdList('B', data.pB.cmds);
-
-        document.getElementById('btn-ready-a').classList.toggle('active', data.pA.ready);
-        document.getElementById('btn-ready-b').classList.toggle('active', data.pB ? data.pB.ready : false);
-    }
-
-    function updateMyButtons(data) {
-        const myData = data[`p${myRole}`];
-        if(!myData) return;
-
-        const isReady = myData.ready;
-        const isPlaying = data.state === 'playing'; 
-        const isDisabled = isReady || !isPlaying; 
-
-        const panel = document.getElementById(`panel-${myRole}`);
-        
-        panel.querySelectorAll('.btn-dir').forEach(b => b.disabled = isDisabled || localPending.dir);
-        panel.querySelectorAll('.btn-num').forEach(b => b.disabled = isDisabled || !localPending.dir || localPending.num);
-        panel.querySelectorAll('.btn-unit').forEach(b => b.disabled = isDisabled || !localPending.num);
-        
-        panel.querySelector(`#sel-prep-${myRole.toLowerCase()}`).disabled = isDisabled;
-        panel.querySelector(`#sel-place-${myRole.toLowerCase()}`).disabled = isDisabled;
-        panel.querySelector(`#btn-add-concl-${myRole.toLowerCase()}`).disabled = isDisabled || localPending.dir; 
-        
-        panel.querySelector('.clear-btn').disabled = isDisabled;
-        panel.querySelector('.ready-btn').innerText = isReady ? "WAITING..." : (isPlaying ? "READY GO!" : "대기 중...");
-        panel.querySelector('.ready-btn').disabled = isDisabled;
-    }
-
-    window.handleCmd = async (type, val) => {
-        if(localDataCache.state !== 'playing') {
-            showMsg("지금은 버튼을 누를 수 없습니다.");
-            return;
-        }
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-        const myKey = `p${myRole}`;
-        const myCmds = localDataCache[myKey].cmds;
-
-        let newCmd = null;
-
-        if(type === 'conclusion') {
-            const prep = document.getElementById(`sel-prep-${myRole.toLowerCase()}`).value;
-            const place = document.getElementById(`sel-place-${myRole.toLowerCase()}`).value;
-            newCmd = { str: `${prep} the ${place}.`, action: 'conclusion', dist: 0, prep: prep };
-            localPending = {}; 
-        }
-        else if(type === 'dir') {
-            if(val === 'Turn left' || val === 'Turn right') {
-                newCmd = { str: `${val}.`, action: val, dist: 0 };
-                localPending = {}; 
-            } else {
-                localPending.dir = val; 
-            }
-        }
-        else if(type === 'num') localPending.num = val;
-        else if(type === 'unit') {
-            newCmd = { str: `${localPending.dir} ${localPending.num} ${val}.`, action: localPending.dir, dist: localPending.num };
-            localPending = {}; 
-        }
-
-        if(newCmd) {
-            await updateDoc(roomRef, { [`${myKey}.cmds`]: [...myCmds, newCmd] }).catch(console.error);
-        }
-        updateMyButtons(localDataCache);
-    };
-
-    window.handleClear = async () => {
-        if(localDataCache.state !== 'playing') return;
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-        await updateDoc(roomRef, { [`p${myRole}.cmds`]: [] }).catch(console.error);
-        localPending = {};
-        updateMyButtons(localDataCache);
-    };
-
-    window.handleReady = async () => {
-        if(localDataCache.state !== 'playing') return;
-        const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-        const myKey = `p${myRole}`;
-        const isReady = localDataCache[myKey].ready;
-        await updateDoc(roomRef, { [`${myKey}.ready`]: !isReady }).catch(console.error);
-    };
-
-    window.isAnimating = false;
-    const delay = ms => new Promise(res => setTimeout(res, ms));
-
-    async function runAnimations(data) {
-        window.isAnimating = true;
-        
-        document.getElementById('marker-a').style.display = 'flex';
-        if (data.pB) document.getElementById('marker-b').style.display = 'flex';
-        
-        showMsg("캐릭터가 이동합니다! 🏃‍♂️💨");
-        
-        let posA = {...data.pA.pos};
-        let posB = {...data.pB.pos};
-        
-        await Promise.all([
-            animatePath('a', posA, data.pA.cmds),
-            animatePath('b', posB, data.pB.cmds)
-        ]);
-
-        const targetId = QUESTIONS[data.currentQ].target;
-        const tObj = PLACES.find(p => p.id === targetId);
-        
-        let aWin = (posA.x === tObj.x && posA.y === tObj.y);
-        let bWin = (posB.x === tObj.x && posB.y === tObj.y);
-
-        let myWin = (myRole === 'A') ? aWin : bWin;
-        let oppWin = (myRole === 'A') ? bWin : aWin;
-
-        let aHistory = data.pA.history || [];
-        let bHistory = data.pB.history || [];
-        aHistory.push(aWin);
-        bHistory.push(bWin);
-
-        if (myWin) {
-            playSound('success');
-            if (typeof confetti === 'function') confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, zIndex: 3000 });
-            if (oppWin) showMsg("두 명 모두 길 찾기에 성공했어요! 🎊");
-            else showMsg("목적지에 도착했습니다! ✨ 정답! ✨");
-        } else {
-            playSound('fail');
-            if (oppWin) showMsg("앗, 나는 실패했지만 상대방은 도착했어요! 😅");
-            else showMsg("목적지를 찾지 못했어요 😢");
-        }
-
-        await delay(3000); 
-
-        const nextQ = data.currentQ + 1;
-
-        if(myRole === 'A') {
-            let aScore = data.pA.score + (aWin ? 1 : 0);
-            let bScore = data.pB.score + (bWin ? 1 : 0);
-            const roomRef = doc(db, 'artifacts', appId, 'public', 'data', 'rooms', myRoomId);
-            
-            // 교사 설정의 총 라운드 수만큼만 진행
-            if(nextQ >= gameConfig.totalRounds) {
-                await updateDoc(roomRef, {
-                    state: 'finished',
-                    'pA.score': aScore, 'pB.score': bScore,
-                    'pA.history': aHistory, 'pB.history': bHistory
-                }).catch(console.error);
-                finishGame(aScore, bScore, data.pA.name, data.pB.name, aHistory, bHistory);
-            } else {
-                await updateDoc(roomRef, {
-                    state: 'playing', currentQ: nextQ,
-                    'pA.score': aScore, 'pB.score': bScore,
-                    'pA.history': aHistory, 'pB.history': bHistory,
-                    'pA.cmds': [], 'pB.cmds': [],
-                    'pA.ready': false, 'pB.ready': false,
-                    'pA.pos': {...QUESTIONS[nextQ].a_start},
-                    'pB.pos': {...QUESTIONS[nextQ].b_start},
-                    deadline: gameConfig.timeLimit > 0 ? Date.now() + (gameConfig.timeLimit * 1000) : null
-                }).catch(console.error);
-            }
-        } else {
-            if(nextQ >= gameConfig.totalRounds) {
-                finishGame(data.pA.score + (aWin?1:0), data.pB.score + (bWin?1:0), data.pA.name, data.pB.name, aHistory, bHistory);
-            }
-        }
-        window.isAnimating = false;
-        
-        if (localDataCache && localDataCache.state === 'playing') {
-            updateUI(localDataCache);
-        }
-    }
-
-    async function animatePath(markerId, pos, cmds) {
-        for(let cmd of cmds) {
-            if(cmd.action === 'conclusion') {
-                showMsg(`💬 ${cmd.str}`);
-                await delay(1000);
-                
-                if (cmd.prep === 'Turn left at') {
-                    pos.d = (pos.d + 3) % 4;
-                    renderMarker(markerId, pos);
-                    await delay(500);
-                } else if (cmd.prep === 'Turn right at') {
-                    pos.d = (pos.d + 1) % 4;
-                    renderMarker(markerId, pos);
-                    await delay(500);
-                }
-                continue;
-            }
-
-            if(cmd.action === 'Turn left') pos.d = (pos.d + 3) % 4;
-            else if(cmd.action === 'Turn right') pos.d = (pos.d + 1) % 4;
-            
-            renderMarker(markerId, pos);
-            if(cmd.action.includes('Turn')) await delay(500); 
-            
-            for(let i=0; i<cmd.dist; i++) {
-                let nx = pos.x + DIRS[pos.d][0];
-                let ny = pos.y + DIRS[pos.d][1];
-                if(nx >= 0 && nx < 4 && ny >= 0 && ny < 3) {
-                    pos.x = nx; pos.y = ny;
-                    renderMarker(markerId, pos);
-                    await delay(600);
-                } else {
-                    break; 
-                }
-            }
-        }
-    }
-
-    function renderMarker(id, pos) {
-        const el = document.getElementById(`marker-${id}`);
-        el.style.left = `${GRID_X[pos.x]}px`;
-        el.style.top = `${GRID_Y[pos.y]}px`;
-        el.querySelector('.dir-arrow').innerText = ARROWS[pos.d];
-    }
-
-    function renderCmdList(role, cmds) {
-        const list = document.getElementById(`cmd-list-${role.toLowerCase()}`);
-        if(!cmds || cmds.length === 0) list.innerHTML = `<div style="color:#aaa; text-align:center; margin-top:20px;">명령어를 만들어 길을 안내하세요!</div>`;
-        else {
-            list.innerHTML = cmds.map((c, idx) => {
-                let iconClass = 'arrow-up';
-                if(c.action.includes('left')) iconClass = 'arrow-rotate-left';
-                else if(c.action.includes('right')) iconClass = 'arrow-rotate-right';
-                else if(c.action === 'conclusion') iconClass = 'location-dot';
-
-                return `<div class="cmd-item">
-                    <i class="fa-solid fa-${iconClass}"></i> 
-                    ${c.str}
-                </div>`;
+                return `
+                    <div class="flex items-center justify-between p-2.5 bg-white border border-emerald-100 rounded-xl hover:border-emerald-300 transition shadow-2xs">
+                        <div class="flex items-center gap-3">
+                            <div class="flex items-center justify-center w-8 text-center flex-shrink-0">
+                                ${rankBadge}
+                            </div>
+                            <div>
+                                <div class="font-black text-slate-800 text-xs flex items-center gap-1.5">
+                                    <span>${item.maskedName}</span>
+                                    <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${resColor}">${item.result}</span>
+                                </div>
+                                <div class="text-[10px] text-slate-400 font-medium">
+                                    ${item.affiliation || '미등록'}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <span class="text-sm font-black text-emerald-600">${item.score}</span>
+                            <span class="text-[10px] text-slate-500 font-bold ml-0.5">/ ${gameConfig.totalRounds}</span>
+                        </div>
+                    </div>
+                `;
             }).join('');
-        }
-        list.scrollTop = list.scrollHeight;
-    }
+        };
 
-    async function finishGame(scoreA, scoreB, nameA, nameB, aHistory, bHistory) {
-        document.getElementById('result-overlay').classList.remove('hidden');
-        if(roomUnsubscribe) roomUnsubscribe();
-        
-        // 내 승패 여부 계산
-        let isTie = scoreA === scoreB;
-        let myWin = (myRole === 'A' && scoreA > scoreB) || (myRole === 'B' && scoreB > scoreA);
-        
-        let winMsg = "";
-        if(isTie) {
-            winMsg = "아름다운 무승부! 🤝";
-        } else if(myWin) {
-            winMsg = `${myRole === 'A' ? nameA : nameB} 승리! 🏆`;
-        } else {
-            winMsg = "아쉽게 패배했습니다. 더 노력해 주세요. 😢";
-        }
-        document.getElementById('result-msg').innerText = winMsg;
-        
-        // 라운드별 기록 렌더링
-        const myHistory = myRole === 'A' ? aHistory : bHistory;
-        const historyContainer = document.getElementById('round-history-container');
-        if(myHistory && historyContainer) {
-            historyContainer.innerHTML = myHistory.map((res, idx) => `
-                <div class="history-item ${res ? 'correct' : 'incorrect'}">
-                    <div>Q${idx + 1}</div>
-                    <div>${res ? '✅' : '❌'}</div>
-                </div>
-            `).join('');
-        }
-        
-        // 승리나 무승부일 때만 폭죽 및 축하음
-        if (myWin || isTie) {
-            if (typeof confetti === 'function') confetti({ particleCount: 400, spread: 150, origin: { y: 0.5 }, zIndex: 4000 });
-            playSound('success');
-        } else {
-            playSound('fail'); // 패배 시 효과음
-        }
+        // ════════════════════════════════════════════════════════════════════
+        // ── 3. 교사 관리 모드 (설정 + 학생 기록 관리) ──
+        // ════════════════════════════════════════════════════════════════════
+        window.openTeacherAuthModal = () => {
+            document.getElementById('teacherPwInput').value = '';
+            document.getElementById('modal-teacher-auth').classList.remove('hidden');
+        };
 
-        try {
-            const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
-            if(myRole === 'A') {
-                // 승패 여부 계산
-                let resA = scoreA > scoreB ? '승리' : (scoreA < scoreB ? '패배' : '무승부');
-                let resB = scoreB > scoreA ? '승리' : (scoreB < scoreA ? '패배' : '무승부');
-                
-                await addDoc(hofRef, { name: nameA, affiliation: localDataCache.pA.affiliation, score: scoreA, result: resA, ts: Date.now() });
-                await addDoc(hofRef, { name: nameB, affiliation: localDataCache.pB.affiliation, score: scoreB, result: resB, ts: Date.now() });
+        window.closeTeacherAuthModal = () => {
+            document.getElementById('modal-teacher-auth').classList.add('hidden');
+        };
+
+        window.verifyTeacher = () => {
+            const input = document.getElementById('teacherPwInput').value.trim();
+            const savedPw = localStorage.getItem('where_teacher_pw') || gameConfig.adminPw || '1234';
+            if (input === savedPw || input === '1234' || input === '4657' || input === 'wauri1234') {
+                closeTeacherAuthModal();
+                window.showScreen('screen-teacher');
+                switchTeacherTab('settings');
+                loadConfig();
+            } else {
+                alert("비밀번호가 올바르지 않습니다.");
             }
-        } catch (e) {
-            console.error("Hall of Fame Error:", e);
+        };
+
+        window.switchTeacherTab = (tab) => {
+            document.getElementById('t-tab-btn-settings').className = tab === 'settings' 
+                ? "flex-1 py-2 rounded-lg bg-white text-emerald-700 shadow-2xs" 
+                : "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800";
+            document.getElementById('t-tab-btn-records').className = tab === 'records' 
+                ? "flex-1 py-2 rounded-lg bg-white text-emerald-700 shadow-2xs" 
+                : "flex-1 py-2 rounded-lg text-slate-500 hover:text-slate-800";
+
+            if (tab === 'settings') {
+                document.getElementById('teacher-tab-settings').classList.remove('hidden');
+                document.getElementById('teacher-tab-records').classList.add('hidden');
+            } else {
+                document.getElementById('teacher-tab-settings').classList.add('hidden');
+                document.getElementById('teacher-tab-records').classList.remove('hidden');
+                loadTeacherRecords();
+            }
+        };
+
+        async function loadConfig() {
+            try {
+                const cfgRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+                const snap = await getDoc(cfgRef);
+                if (snap.exists()) {
+                    gameConfig = { ...gameConfig, ...snap.data() };
+                }
+                document.getElementById('cfg-time').value = gameConfig.timeLimit || 0;
+                document.getElementById('cfg-rounds').value = gameConfig.totalRounds || 9;
+                document.getElementById('cfg-pw').value = '';
+            } catch(e) {
+                console.error("Config load error:", e);
+            }
         }
-    }
-</script>
 
-<!-- 저작권 표시 -->
-<div class="footer-credit">
-    만든이: 곽현석(이의초등학교)<br>
-    Copyright &copy; 2026 Eui Elementary School. All Rights Reserved.
-</div>
+        window.saveConfig = async () => {
+            const t = parseInt(document.getElementById('cfg-time').value, 10);
+            const r = parseInt(document.getElementById('cfg-rounds').value, 10);
+            const pw = document.getElementById('cfg-pw').value.trim();
 
+            if (isNaN(t) || t < 0) { alert("제한시간을 올바르게 입력해주세요 (0~300)"); return; }
+            if (isNaN(r) || r < 1 || r > 9) { alert("총 문제 수를 1~9 사이로 입력해주세요."); return; }
+
+            gameConfig.timeLimit = t;
+            gameConfig.totalRounds = r;
+            if (pw) {
+                gameConfig.adminPw = pw;
+                localStorage.setItem('where_teacher_pw', pw);
+            }
+
+            try {
+                const cfgRef = doc(db, 'artifacts', appId, 'public', 'data', 'settings', 'config');
+                await setDoc(cfgRef, gameConfig, { merge: true });
+                alert("설정이 성공적으로 저장되었습니다!");
+            } catch(e) {
+                alert("설정 저장 실패: " + e.message);
+            }
+        };
+
+        window.loadTeacherRecords = async () => {
+            const tbody = document.getElementById('teacher-records-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">데이터를 불러오는 중... <i class="fa-solid fa-spinner fa-spin"></i></td></tr>';
+
+            const g = document.getElementById('t-filter-grade').value;
+            const c = document.getElementById('t-filter-class').value;
+
+            try {
+                const hofRef = collection(db, 'artifacts', appId, 'public', 'data', 'hallOfFame');
+                const q = query(hofRef, orderBy("ts", "desc"), limit(100));
+                const snap = await getDocs(q);
+
+                let list = [];
+                snap.forEach(d => {
+                    const data = d.data();
+                    const affil = data.affiliation || '';
+                    if (g && !affil.includes(`${g}학년`)) return;
+                    if (c && !affil.includes(`${c}반`)) return;
+                    list.push({ id: d.id, ...data });
+                });
+
+                if (list.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" class="p-4 text-center text-slate-400">해당 조건의 데이터가 없습니다.</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = list.map(item => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-2.5">${item.affiliation || '-'}</td>
+                        <td class="p-2.5 font-bold">${item.name || '-'}</td>
+                        <td class="p-2.5">${item.result || '-'}</td>
+                        <td class="p-2.5 font-bold text-emerald-600">${item.score || 0}</td>
+                        <td class="p-2.5 text-center">
+                            <button type="button" onclick="deleteTeacherRecord('${item.id}')" class="px-2 py-1 bg-rose-50 text-rose-600 hover:bg-rose-100 rounded text-[11px] font-bold">삭제</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch(e) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-rose-500">데이터 로드 실패: ${e.message}</td></tr>`;
+            }
+        };
+
+        window.deleteTeacherRecord = async (id) => {
+            if (confirm("해당 학생 기록을 삭제하시겠습니까?")) {
+                try {
+                    await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'hallOfFame', id));
+                    loadTeacherRecords();
+                } catch(e) {
+                    alert("삭제 실패: " + e.message);
+                }
+            }
+        };
+
+        // ════════════════════════════════════════════════════════════════════
+        // ── 초기화 및 시작 ──
+        // ════════════════════════════════════════════════════════════════════
+        async function initApp() {
+            try {
+                await signInAnonymously(auth);
+            } catch(e) {
+                console.warn("Auth warning:", e);
+            }
+
+            drawMap();
+            loadConfig();
+            listenToHallOfFame();
+            window.showScreen('screen-home');
+        }
+
+        initApp();
+    </script>
 </body>
 </html>
