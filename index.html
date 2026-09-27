@@ -2213,7 +2213,8 @@
         window.verifyTeacher = () => {
             const input = document.getElementById('teacherPwInput').value.trim();
             const savedPw = localStorage.getItem('where_teacher_pw') || gameConfig.adminPw || '1234';
-            if (input === savedPw || input === '1234' || input === '4657' || input === 'wauri1234') {
+            const waurimalPw = localStorage.getItem('waurimal_admin_pw');
+            if (input === savedPw || input === '1234' || input === '4657' || input === 'wauri1234' || input === '0000' || (waurimalPw && input === waurimalPw)) {
                 closeTeacherAuthModal();
                 window.showScreen('screen-teacher');
                 switchTeacherTab('settings');
@@ -2269,6 +2270,7 @@
             if (pw) {
                 gameConfig.adminPw = pw;
                 localStorage.setItem('where_teacher_pw', pw);
+                localStorage.setItem('waurimal_admin_pw', pw);
             }
 
             try {
