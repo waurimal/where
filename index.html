@@ -1421,6 +1421,14 @@
 
         // 확실한 화면 전환 유틸
         window.showScreen = (screenId) => {
+            if (screenId === 'screen-teacher' && (!window.WaurimalAuth || !window.WaurimalAuth.isAuthenticated())) {
+                if (typeof window.openTeacherAuthModal === 'function') {
+                    window.openTeacherAuthModal();
+                } else {
+                    alert('교사 인증이 필요합니다.');
+                }
+                return;
+            }
             const screens = ['screen-home', 'screen-game', 'screen-result', 'screen-teacher'];
             screens.forEach(id => {
                 const el = document.getElementById(id);
@@ -2202,6 +2210,12 @@
         // ── 3. 교사 관리 모드 (설정 + 학생 기록 관리) ──
         // ════════════════════════════════════════════════════════════════════
         window.openTeacherAuthModal = () => {
+            if (window.WaurimalAuth && window.WaurimalAuth.isAuthenticated()) {
+                window.showScreen('screen-teacher');
+                switchTeacherTab('settings');
+                loadConfig();
+                return;
+            }
             document.getElementById('teacherPwInput').value = '';
             document.getElementById('modal-teacher-auth').classList.remove('hidden');
         };
@@ -2213,8 +2227,8 @@
         window.verifyTeacher = () => {
             const input = document.getElementById('teacherPwInput').value.trim();
             const savedPw = localStorage.getItem('where_teacher_pw') || gameConfig.adminPw || '1234';
-            const waurimalPw = localStorage.getItem('waurimal_admin_pw');
-            if (input === savedPw || input === '1234' || input === '4657' || input === 'wauri1234' || input === '0000' || (waurimalPw && input === waurimalPw)) {
+            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || savedPw || '1234'));
+            if (isValid) {
                 closeTeacherAuthModal();
                 window.showScreen('screen-teacher');
                 switchTeacherTab('settings');
@@ -2268,9 +2282,17 @@
             gameConfig.timeLimit = t;
             gameConfig.totalRounds = r;
             if (pw) {
+                if (pw.length < 4) {
+                    alert("비밀번호는 4자리 이상이어야 합니다.");
+                    return;
+                }
                 gameConfig.adminPw = pw;
+                if (window.WaurimalAuth) {
+                    window.WaurimalAuth.setPw(pw);
+                } else {
+                    localStorage.setItem('waurimal_admin_pw', pw);
+                }
                 localStorage.setItem('where_teacher_pw', pw);
-                localStorage.setItem('waurimal_admin_pw', pw);
             }
 
             try {
