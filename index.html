@@ -1703,12 +1703,12 @@
         };
 
         function updateUI(data) {
-            document.getElementById('name-a').innerText = data.pA.name;
-            document.getElementById('marker-name-a').innerText = data.pA.name;
+            document.getElementById('name-a').innerText = maskStudentName(data.pA.name);
+            document.getElementById('marker-name-a').innerText = maskStudentName(data.pA.name);
             
             if(data.pB) {
-                document.getElementById('name-b').innerText = data.pB.name;
-                document.getElementById('marker-name-b').innerText = data.pB.name;
+                document.getElementById('name-b').innerText = maskStudentName(data.pB.name);
+                document.getElementById('marker-name-b').innerText = maskStudentName(data.pB.name);
             }
 
             const q = QUESTIONS[data.currentQ];
@@ -2189,7 +2189,7 @@
                             </div>
                             <div>
                                 <div class="font-black text-slate-800 text-xs flex items-center gap-1.5">
-                                    <span>${item.maskedName}</span>
+                                    <span>${window.WaurimalSanitize ? window.WaurimalSanitize(item.maskedName || maskStudentName(item.name || '학생')) : (item.maskedName || maskStudentName(item.name || '학생'))}</span>
                                     <span class="text-[10px] px-1.5 py-0.5 rounded font-bold ${resColor}">${item.result}</span>
                                 </div>
                                 <div class="text-[10px] text-slate-400 font-medium">
