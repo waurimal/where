@@ -2170,8 +2170,9 @@
                 return;
             }
 
-            container.innerHTML = displayList.map((item, index) => {
-                const rank = index + 1;
+            container.innerHTML = displayList.map((item, index, arr) => {
+                // 동점자 동일 순위 및 차순위 건너뛰기 (1등 2명이면 1등, 1등, 3등)
+                const rank = arr.findIndex(x => Number(x.score || 0) <= Number(item.score || 0)) + 1;
                 let rankBadge = `<span class="w-6 h-6 flex items-center justify-center rounded-full bg-slate-100 text-slate-600 font-black text-xs">${rank}</span>`;
                 if (rank === 1) rankBadge = '<span class="text-xl">🥇</span>';
                 else if (rank === 2) rankBadge = '<span class="text-xl">🥈</span>';
