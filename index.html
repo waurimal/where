@@ -1250,7 +1250,7 @@
         let localDataCache = null;
 
         // 교사 모드 게임 설정
-        let gameConfig = { adminPw: '1234', timeLimit: 0, totalRounds: 9 };
+        let gameConfig = { adminPw: '4657', timeLimit: 0, totalRounds: 9 };
         let timerInterval = null;
 
         // 효과음 AudioContext
@@ -2227,8 +2227,8 @@
 
         window.verifyTeacher = () => {
             const input = document.getElementById('teacherPwInput').value.trim();
-            const savedPw = localStorage.getItem('where_teacher_pw') || gameConfig.adminPw || '1234';
-            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || savedPw || '1234'));
+            const savedPw = localStorage.getItem('where_teacher_pw') || gameConfig.adminPw || '4657';
+            const isValid = window.WaurimalAuth ? window.WaurimalAuth.authenticate(input) : (input === (localStorage.getItem('waurimal_admin_pw') || savedPw || '4657'));
             if (isValid) {
                 closeTeacherAuthModal();
                 window.showScreen('screen-teacher');
